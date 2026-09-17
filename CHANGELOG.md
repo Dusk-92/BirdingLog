@@ -3,109 +3,90 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.16 — 17 septembre 2026
+
+- Nouveau point d'entrée actif `BL_Loader716.lua` : les anciens `BL_Loader.lua` et `BL_Loader712.lua` ne sont plus empilés dans le chemin d'exécution.
+- Le loader FR7.16 effectue uniquement le préflight des sauvegardes, charge `BL_Main` une fois, puis passe la main à `BL_Runtime716.lua`.
+- `BL_Runtime716.lua` devient l'unique propriétaire moderne du chat, des sauvegardes, de la localisation FR, des commandes, des Quickslots et de l'unload.
+- Les sauvegardes runtime utilisent désormais le callback réel `PluginData.Save(success, message)` au lieu de considérer un `pcall()` réussi comme preuve d'une écriture disque réussie.
+- Les écritures runtime sont sérialisées et coalescées : une modification reçue pendant une sauvegarde déclenche une nouvelle passe après la précédente au lieu de lancer une écriture concurrente.
+- `BL_Options` est également routé vers cet ordonnanceur depuis `Dusk/Common/Options.lua` quand BirdingLog FR7.16 est actif.
+- La localisation dynamique FR utilise un seul runner pour les oiseaux et objets `BL_GID`; il n'existe plus de second probe GID ni d'estimation de son activité en nombre de frames.
+- La signature de localisation passe à `BL716` et n'est validée qu'après la sauvegarde réussie de `BL_Names`, `BL_GNames` et `BL_Options`.
+- Les noms officiels intégrés à `BL_FR.lua` sont identifiés avant de réappliquer les caches dynamiques, empêchant un ancien cache d'écraser une traduction officielle.
+- Le probe de localisation vide son Quickslot de test et vérifie le type ainsi que `GetData()` à chaque ID, ce qui empêche un raccourci rejeté de réutiliser accidentellement l'objet précédent.
+- Les Quickslots temporairement indisponibles sont stockés dans `BL_PendingShortcuts` et représentés par `false` dans `BL_Totals`, tandis que `nil` signifie désormais explicitement que le joueur a réellement vidé l'emplacement.
+- Une seconde validation est faite sur les vrais Quickslots après création de la fenêtre afin de couvrir un rejet qui surviendrait entre le préflight et le contrôle réel.
+- Un kit dont `GetItem()` ou `GetItemInfo()` n'est pas encore résolu est conservé et validé ultérieurement au lieu d'être supprimé à tort.
+- Le bypass historique avec **Maj** est persisté via `kitBypass` et reste cohérent après reload.
+- Les anciennes sauvegardes de lieux mixtes (ancien format + zones modernes) sont fusionnées sans supprimer les zones modernes déjà présentes.
+- Les IDs de compteurs inconnus sont conservés afin d'éviter une perte de données lors d'un downgrade ou d'un décalage de base.
+- Le `BL_Bname` est reconstruit depuis zéro après localisation afin qu'un ancien alias appris ne reste pas attaché indéfiniment.
+- Le Chapeau d'ornithologue (`6B900`) est reconnu comme objet connu du hobby sans être traité comme récompense de zone.
+- Les anciennes différences de géométrie DE et deux différences de casse sur les noms de zones de récompenses sont corrigées au runtime.
+- Les commandes `sight` et `zones` sont maintenant strictement limitées à `/bl`; elles ne peuvent plus intercepter accidentellement `/bll` ou `/blg`.
+- L'unload arrête le runner de localisation, invalide le handler chat, masque les fenêtres et retire la commande shell BirdingLog.
+- Ajout de `.github/workflows/audit.yml` et `tools/audit_repo.py` : compilation de tous les Lua en 5.1 et contrôles automatiques des versions, IDs, zones, couverture FR, point d'entrée et protections essentielles.
+- `Dusk/Common/Options.lua` reste strictement synchronisé entre BirdingLog et FishingLog.
+
 ## 1.3-FR7.15 — 17 septembre 2026
 
-- `/bl fr` ne déduit plus qu'une localisation est active uniquement depuis `frProbeVersion` : FR7.15 maintient désormais un véritable état runtime de localisation.
-- L'état runtime couvre à la fois le probe oiseaux et le probe des récompenses/objets `BL_GID` ; la taille réelle de la queue GID détermine sa fenêtre d'activité attendue.
-- Les demandes manuelles `/bl fr` lancées pendant une passe active sont regroupées puis relancées dès que l'état runtime redevient libre.
-- `BL_IsLocalizationBusy()` expose cet état runtime sans transformer le marqueur persistant `frProbeVersion` en pseudo-indicateur d'activité.
-- La sécurité de timeout reste présente afin qu'un contrôle Turbine bloqué ne puisse pas empêcher définitivement un refresh manuel.
-- Après un échec d'autosave, `BL715_SaveRetryPending` reste actif et la prochaine modification réelle des données retente immédiatement la sauvegarde, même si le compteur périodique est encore inférieur à 10.
-- Une sauvegarde réussie efface le retry pending, remet le compteur d'observations à zéro et réarme le message d'erreur pour un éventuel futur incident.
-- Aucun changement n'est apporté aux données oiseaux, traductions FR, zones ou à `Dusk/Common`.
+- `/bl fr` ne déduit plus qu'une localisation est active uniquement depuis `frProbeVersion` : FR7.15 maintient un état runtime de localisation.
+- Les demandes manuelles de refresh sont regroupées lorsqu'une passe est déjà en cours.
+- `BL715_SaveRetryPending` force une nouvelle tentative de sauvegarde lors de la prochaine modification après un échec.
 
 ## 1.3-FR7.14 — 17 septembre 2026
 
-- Un kit accepté par Turbine mais temporairement non résolu est maintenant retiré de `BL_Totals` pendant la construction de l'interface, puis restauré silencieusement une fois FR7.11 chargé.
-- La restauration temporaire désactive `ShortcutChanged` afin d'éviter le faux message « Objet introuvable » au chargement.
-- Le kit est revalidé une seconde fois avant restauration : s'il s'est résolu entre-temps avec une mauvaise catégorie, il reste rejeté.
-- `/bl fr` n'ignore plus silencieusement une demande manuelle lorsqu'un probe oiseaux est déjà en cours : le refresh est différé puis relancé à la fin de la passe active.
-- Une attente de sécurité bornée empêche un ancien état de probe incomplet de bloquer définitivement le refresh manuel.
-- Un échec synchrone d'autosave est désormais signalé une seule fois ; le compteur n'est pas remis à zéro et BirdingLog retente au changement suivant.
-- Le changement d'échelle de la fenêtre est sauvegardé immédiatement dans les options au lieu d'attendre l'unload du plugin.
-- `Dusk/Common/Options.lua` reste strictement synchronisé entre BirdingLog et FishingLog après ce changement partagé.
-- Le fichier `BL_Loader712.lua` reste le point d'entrée afin de ne pas empiler un nouveau loader.
+- Restauration silencieuse d'un kit temporairement non résolu afin d'éviter le faux message « Objet introuvable ».
+- Différé de `/bl fr` lorsqu'une passe oiseaux est déjà active.
+- Signalement des échecs synchrones d'autosave.
+- Sauvegarde immédiate du changement d'échelle et synchronisation de `Dusk/Common/Options.lua` avec FishingLog.
 
 ## 1.3-FR7.13 — 17 septembre 2026
 
-- Le validateur de raccourcis ne se contente plus de vérifier qu'aucune exception Lua n'est levée : il contrôle aussi que Turbine restitue réellement un `ShortcutType.Item` avec les mêmes données sauvegardées.
-- Un Quickslot silencieusement rejeté par Turbine est désormais considéré comme invalide et retiré avant la construction de l'interface.
-- Pour le kit d'ornithologie, un raccourci accepté mais temporairement non résolu (`GetItemInfo()==nil`) est conservé au lieu d'être supprimé à tort.
-- Un kit déjà résolu avec une catégorie différente de `BL_BirdingKit` reste rejeté.
-- Le fichier `BL_Loader712.lua` est conservé comme point d'entrée pour éviter d'empiler un loader supplémentaire ; son en-tête reflète désormais FR7.13.
+- Le validateur de raccourcis contrôle le `ShortcutType.Item` et la donnée réellement restituée par Turbine.
+- Détection des Quickslots silencieusement rejetés.
+- Conservation d'un kit accepté mais temporairement non résolu.
 
 ## 1.3-FR7.12 — 17 septembre 2026
 
-- Nouveau loader `BL_Loader712.lua`, chargé avant FR7.11, afin de durcir la restauration sans réécrire le cœur historique.
-- Les raccourcis sauvegardés `kit`, `wpn` et `shl` sont désormais testés avec un vrai `Shortcut(Item, data)` et `Quickslot:SetShortcut()` protégés par `pcall()` avant la création de la fenêtre.
-- Une ancienne donnée Turbine qui provoque une erreur de restauration est supprimée avant d'atteindre `BL_Window`.
-- `pos1` est borné à la résolution actuelle avant même la construction de la fenêtre, en tenant compte de l'échelle sauvegardée.
-- Autosave des totaux, observations par zone et caches de noms toutes les 10 observations reconnues.
-- Sauvegarde immédiate lors d'un changement de maîtrise, d'équipement, d'un ajout manuel d'observation ou d'une modification manuelle de compteur.
-- Une sauvegarde de consolidation est également effectuée après le chargement afin de persister les anciennes données assainies.
-- `/bl fr` devient un vrai rafraîchissement des noms appris dynamiquement : les noms officiels intégrés à `BL_FR.lua` restent intacts, tandis que les caches dynamiques sont remis en file de probe.
-- Lors d'un rafraîchissement manuel, l'ancien nom appris reste affiché comme repli si LOTRO ne renvoie pas de nouveau nom.
-- La signature de localisation reste `BL710`, car FR7.12 ne modifie toujours aucun ID de la base.
+- Ajout du loader de durcissement précoce des Quickslots et de la position de fenêtre.
+- Autosave toutes les 10 observations reconnues et sauvegardes immédiates des changements importants.
+- `/bl fr` devient un vrai refresh des caches de noms dynamiques.
 
 ## 1.3-FR7.11 — 17 septembre 2026
 
-- `BL_Options` est désormais assaini **avant** que `BL_Main` crée la fenêtre et le panneau d'options.
-- Les positions `pos1`, `pos2` et `iconPos` invalides sont ignorées au lieu d'être transmises aux contrôles Turbine.
-- `scale` est converti en nombre et borné entre `0.5` et `2.0` avant toute multiplication ou appel à `SetScale()`.
-- `BL_Totals.fp` est validé comme nombre positif ou nul ; une valeur corrompue ne peut plus faire échouer `/bl`.
-- Les raccourcis sauvegardés `kit`, `wpn` et `shl` sont ignorés s'ils ne sont pas des chaînes exploitables.
-- Les compteurs d'oiseaux et de zones conservent la seconde validation post-chargement introduite en FR7.10.
-- La fenêtre principale restaurée est re-bornée à la résolution actuelle afin qu'elle ne puisse pas rester hors écran après un changement de moniteur ou de résolution.
-- La signature de localisation reste `BL710` : FR7.11 ne modifie ni `BL_ID` ni `BL_GID`, donc aucune nouvelle passe FR inutile n'est déclenchée.
+- Assainissement des options et totaux avant création de l'interface.
+- Bornage de l'échelle entre `0.5` et `2.0`.
+- Fenêtre restaurée maintenue dans les limites de la résolution actuelle.
 
 ## 1.3-FR7.10 — 17 septembre 2026
 
-- Les récompenses connues de `BL_GID` sont désormais reconnues et leur nom FR peut être appris même lorsque `/bl track` est désactivé.
-- Les compteurs d'oiseaux et de zones issus d'anciennes sauvegardes sont normalisés avant toute opération arithmétique ; une valeur non numérique ne peut plus provoquer une erreur lors d'un `+1`.
-- Les entrées de zone corrompues qui ne sont plus des tables sont recréées proprement.
-- La signature de localisation FR n'est plus enregistrée au lancement des probes : elle n'est validée qu'après la fin effective du probe oiseaux et du probe récompenses.
-- Si le plugin est fermé ou si un probe n'aboutit pas avant validation, la signature reste ancienne et la passe sera retentée au chargement suivant.
-- Le préfixe de signature passe à `BL710`, ce qui invalide proprement l'ancienne signature FR7.9.
-- Le cache appris `BL_Names` n'est plus appliqué aux clients EN/DE ; il reste réservé au client FR afin d'éviter une contamination de langue.
-- Les nouveaux noms appris depuis le chat ne sont persistés dans `BL_Names` / `BL_GNames` que sur client FR.
+- Reconnaissance des récompenses connues indépendamment de `/bl track`.
+- Normalisation des compteurs issus de sauvegardes anciennes/corrompues.
+- Signature de localisation enregistrée seulement après la fin des probes nécessaires.
+- Isolation du cache FR sur les clients EN/DE.
 
 ## 1.3-FR7.9 — 17 septembre 2026
 
-- Remplacement du déclenchement FR basé uniquement sur `frProbeVersion` par une **signature déterministe de la base d'ID**.
-- Une modification de `BL_ID` ou `BL_GID` autorise automatiquement une nouvelle passe de localisation.
-- Un ID impossible à résoudre n'est plus retenté automatiquement à chaque connexion.
-- `/bl fr` conserve la possibilité de forcer une nouvelle tentative manuelle.
-- Ajout d'un cache persistant `BL_GNames` pour les noms localisés des récompenses et objets d'ornithologie.
-- Le suivi chat peut mémoriser un nom localisé de récompense rencontré en jeu.
-- Durcissement partagé de `Dusk/Common` dans BirdingLog et FishingLog.
-- Suppression de `loadstring()` pour la conversion des nombres PluginData.
-- Conversion sûre avec `tonumber()` en acceptant point ou virgule selon la locale.
-- Les données numériques invalides sont conservées sous forme de texte au lieu de provoquer une erreur au chargement.
-- Correction de la date historique de la version 1.1.4 dans `Updates.txt`.
-- Consolidation de la documentation de versions dans ce changelog.
+- Signature déterministe basée sur les IDs oiseaux/objets.
+- Cache `BL_GNames` séparé pour les objets d'ornithologie.
+- Suppression de `loadstring()` dans la conversion `PluginData` partagée.
 
 ## 1.3-FR7.8 — 17 septembre 2026
 
-- Le probe FR n'est plus définitivement bloqué par l'ancien marqueur `frProbeVersion=3` lorsqu'une future base contient des oiseaux sans nom FR.
-- Métadonnées du fork nettoyées et site redirigé vers le dépôt GitHub Dusk-92.
-- Suppression du `.plugincompendium` utilisant l'identifiant LOTROInterface 1241 de la publication originale.
-- Ajout d'un `README.md` complet.
+- Future-proofing du probe FR, nettoyage des métadonnées du fork et ajout du README principal.
 
 ## 1.3-FR7.7 — 17 septembre 2026
 
-- Anti-doublon du handler de chat renforcé par génération.
-- Listes protégées contre les anciens ID invalides/corrompus.
-- `/bl zones` ne compte plus les totaux à zéro comme observés.
-- Validation du kit restauré depuis une ancienne sauvegarde.
-- Détection de zone rendue déterministe en cas de rectangles superposés.
+- Anti-doublon du handler chat, listes sûres, validation du kit restauré et détection de zone déterministe.
 
 ## FR7.x précédentes
 
-- Traduction et adaptation du fonctionnement au client français.
-- Base officielle de noms français liée aux ID internes LOTRO.
+- Traduction et adaptation au client français.
+- Base officielle de noms français liée aux IDs internes LOTRO.
 - Gestion des noms localisés identiques.
-- Icône flottante et sauvegarde de sa position.
-- Amélioration de la détection de zone et des coordonnées FR.
+- Icône flottante et sauvegarde de position.
 - Compatibilité renforcée avec les anciennes sauvegardes.
 
-Pour les détails fins des étapes FR3 à FR7.6, consulter l'historique Git du dépôt.
+Pour les détails fins des étapes FR3 à FR7.6 et de l'historique original, consulter l'historique Git et `Dusk/BirdingLog/Updates.txt`.
