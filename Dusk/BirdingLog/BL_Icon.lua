@@ -1,17 +1,47 @@
 -- BirdingLog floating desktop icon
 -- Left click: show/hide BirdingLog window
--- Left drag: move the icon; position is saved in BL_Options
+-- Left drag: move the icon; position is saved independently
+
+-- Make sure localized PluginData wrappers are installed before icon-state I/O.
+import "Dusk.Common"
 
 BL_IconWindow = Turbine.UI.Window()
 BL_IconWindow:SetSize(36,36)
 BL_IconWindow:SetZOrder(1000)
 
 local sw, sh = Turbine.UI.Display.GetWidth(), Turbine.UI.Display.GetHeight()
-local defaultPos = { x = math.max(0, sw - 92), y = math.max(0, math.floor(sh * 0.45)) }
-local p = BL_Options.iconPos or defaultPos
-local px = math.max(0, math.min(tonumber(p.x) or defaultPos.x, sw - 36))
-local py = math.max(0, math.min(tonumber(p.y) or defaultPos.y, sh - 36))
+local defaultX = math.max(0, sw - 92)
+local defaultY = math.max(0, math.floor(sh * 0.45))
+
+local BL_IconState = Turbine.PluginData.Load(Turbine.DataScope.Server,"BL_IconState")
+if type(BL_IconState) ~= "table" then BL_IconState = {} end
+
+local savedX = tonumber(BL_IconState.x)
+local savedY = tonumber(BL_IconState.y)
+if (not savedX or not savedY) and BL_Options and type(BL_Options.iconPos)=="table" then
+    savedX = savedX or tonumber(BL_Options.iconPos.x)
+    savedY = savedY or tonumber(BL_Options.iconPos.y)
+end
+
+local px = math.max(0, math.min(savedX or defaultX, sw - 36))
+local py = math.max(0, math.min(savedY or defaultY, sh - 36))
 BL_IconWindow:SetPosition(px,py)
+
+function BL_SaveIconPosition()
+    if not BL_IconWindow then return end
+    local x,y = BL_IconWindow:GetPosition()
+    x,y = math.floor(x+0.5), math.floor(y+0.5)
+    BL_IconState.x, BL_IconState.y = tostring(x), tostring(y)
+    Turbine.PluginData.Save(Turbine.DataScope.Server,"BL_IconState",BL_IconState)
+    if BL_Options then
+        BL_Options.iconPos = {x=x,y=y} -- backwards compatibility
+    end
+end
+
+-- Create the dedicated state immediately when migrating from an older save.
+if not tonumber(BL_IconState.x) or not tonumber(BL_IconState.y) then
+    BL_SaveIconPosition()
+end
 
 local icon = Turbine.UI.Control()
 icon:SetParent(BL_IconWindow)
@@ -44,14 +74,12 @@ icon.MouseMove = function(sender,args)
     end
 end
 
-icon.MouseUp = function(sender,args)
-    if args.Button ~= Turbine.UI.MouseButton.Left then return end
+local function finishDrag(sender,args)
+    if args and args.Button and args.Button ~= Turbine.UI.MouseButton.Left then return end
     if not dragging then return end
     dragging = false
     if moved then
-        local x,y = BL_IconWindow:GetPosition()
-        BL_Options.iconPos = { x=x, y=y }
-        Turbine.PluginData.Save(Turbine.DataScope.Server,"BL_Options",BL_Options)
+        BL_SaveIconPosition()
     else
         local visible = not BL_window:IsVisible()
         BL_window:SetVisible(visible)
@@ -59,4 +87,6 @@ icon.MouseUp = function(sender,args)
     end
 end
 
+icon.MouseUp = finishDrag
+BL_IconWindow.MouseUp = finishDrag
 BL_IconWindow:SetVisible(true)
