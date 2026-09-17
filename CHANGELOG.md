@@ -3,6 +3,14 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.13 — 17 septembre 2026
+
+- Le validateur de raccourcis ne se contente plus de vérifier qu'aucune exception Lua n'est levée : il contrôle aussi que Turbine restitue réellement un `ShortcutType.Item` avec les mêmes données sauvegardées.
+- Un Quickslot silencieusement rejeté par Turbine est désormais considéré comme invalide et retiré avant la construction de l'interface.
+- Pour le kit d'ornithologie, un raccourci accepté mais temporairement non résolu (`GetItemInfo()==nil`) est conservé au lieu d'être supprimé à tort.
+- Un kit déjà résolu avec une catégorie différente de `BL_BirdingKit` reste rejeté.
+- Le fichier `BL_Loader712.lua` est conservé comme point d'entrée pour éviter d'empiler un loader supplémentaire ; son en-tête reflète désormais FR7.13.
+
 ## 1.3-FR7.12 — 17 septembre 2026
 
 - Nouveau loader `BL_Loader712.lua`, chargé avant FR7.11, afin de durcir la restauration sans réécrire le cœur historique.
