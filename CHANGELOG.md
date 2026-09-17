@@ -3,6 +3,13 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.18 — 17 septembre 2026
+
+- L'icône flottante BirdingLog n'utilise plus `SetZOrder(1000)`.
+- Elle passe sur `SetZOrder(0)`, comme TravelRef et LOTRO Events.
+- Les panneaux natifs LOTRO — notamment la carte — peuvent désormais passer devant l'icône.
+- Le déplacement, la sauvegarde de position et le clic d'ouverture de BirdingLog restent inchangés.
+
 ## 1.3-FR7.17 — 17 septembre 2026
 
 - Le slot **Kit d’ornithologie** n'utilise plus `BL_BirdingKit=104` ni `GetCategory()` pour décider si un objet est valide.
