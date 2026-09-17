@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.19**
+- Version du fork : **1.3-FR7.20**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -22,6 +22,7 @@ Cette version conserve l'interface et les données historiques de Birding Log to
 - slot Kit compatible avec les kits LOTRO actuels sans dépendre de l'ancienne catégorie `104` ;
 - icône flottante sur la couche UI normale afin que la carte et les panneaux natifs LOTRO puissent passer devant ;
 - niveau d'ornithologie et meilleur rang atteint affichés directement dans la fenêtre principale ;
+- fenêtre principale légèrement agrandie et redistribuée pour laisser plus d'espace entre les blocs ;
 - assainissement des anciennes sauvegardes avant création de l'interface ;
 - autosave périodique et sauvegardes immédiates des changements importants ;
 - sauvegardes runtime vérifiées avec le callback réel de `PluginData.Save` ;
@@ -86,6 +87,8 @@ Le runtime FR7.16 possède un seul propriétaire pour :
 **FR7.18** aligne l'icône flottante sur TravelRef et LOTRO Events : `BL_IconWindow` utilise désormais `SetZOrder(0)`. La carte et les autres panneaux natifs LOTRO peuvent donc la recouvrir normalement.
 
 **FR7.19** ajoute dans la fenêtre principale une ligne de maîtrise du type `Ornithologie : niveau 28 — Bird-brained`. Le meilleur rang atteint est calculé depuis les paliers `BL_Title`. Tant que la fenêtre est visible, l'affichage est rafraîchi automatiquement si la maîtrise change ; si elle était fermée au moment du gain, la nouvelle valeur apparaît dès sa prochaine ouverture.
+
+**FR7.20** agrandit légèrement la fenêtre principale de `340x275` à `360x295` et redistribue les contrôles pour laisser davantage d'espace autour de la maîtrise et des deux rangées d'équipement, sans modifier leur fonctionnement.
 
 ## Données françaises et localisation dynamique
 
