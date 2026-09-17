@@ -3,6 +3,19 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.12 — 17 septembre 2026
+
+- Nouveau loader `BL_Loader712.lua`, chargé avant FR7.11, afin de durcir la restauration sans réécrire le cœur historique.
+- Les raccourcis sauvegardés `kit`, `wpn` et `shl` sont désormais testés avec un vrai `Shortcut(Item, data)` et `Quickslot:SetShortcut()` protégés par `pcall()` avant la création de la fenêtre.
+- Une ancienne donnée Turbine qui provoque une erreur de restauration est supprimée avant d'atteindre `BL_Window`.
+- `pos1` est borné à la résolution actuelle avant même la construction de la fenêtre, en tenant compte de l'échelle sauvegardée.
+- Autosave des totaux, observations par zone et caches de noms toutes les 10 observations reconnues.
+- Sauvegarde immédiate lors d'un changement de maîtrise, d'équipement, d'un ajout manuel d'observation ou d'une modification manuelle de compteur.
+- Une sauvegarde de consolidation est également effectuée après le chargement afin de persister les anciennes données assainies.
+- `/bl fr` devient un vrai rafraîchissement des noms appris dynamiquement : les noms officiels intégrés à `BL_FR.lua` restent intacts, tandis que les caches dynamiques sont remis en file de probe.
+- Lors d'un rafraîchissement manuel, l'ancien nom appris reste affiché comme repli si LOTRO ne renvoie pas de nouveau nom.
+- La signature de localisation reste `BL710`, car FR7.12 ne modifie toujours aucun ID de la base.
+
 ## 1.3-FR7.11 — 17 septembre 2026
 
 - `BL_Options` est désormais assaini **avant** que `BL_Main` crée la fenêtre et le panneau d'options.
