@@ -8,6 +8,23 @@ local function L(fr,en)
     if IsFR() then return fr else return en end
 end
 
+local function SafeSave(Fname,Settings)
+    if not Fname then return true end
+    return pcall(Turbine.PluginData.Save,Turbine.DataScope.Server,Fname,Settings)
+end
+
+local function ClampWindow(Window,scale)
+    if not Window then return nil end
+    local x,y=Window:GetPosition()
+    local sw,sh=Turbine.UI.Display.GetWidth(),Turbine.UI.Display.GetHeight()
+    local ww=math.floor((Window:GetWidth() or 0)*scale+0.5)
+    local wh=math.floor((Window:GetHeight() or 0)*scale+0.5)
+    x=math.max(0,math.min(tonumber(x) or 0,math.max(0,sw-ww)))
+    y=math.max(0,math.min(tonumber(y) or 0,math.max(0,sh-wh)))
+    Window:SetPosition(x,y)
+    return {x=x,y=y}
+end
+
 function Options_Box(OP,Ypos,text)
     local Box = Turbine.UI.Lotro.CheckBox()
     Box:SetParent( OP )
@@ -54,10 +71,12 @@ function Options_Init(print,Settings,Window,Fname,Window2)
             Settings.scale = scale
             wScale.lbl:SetText( string.format(L("Échelle de la fenêtre : %.2f","Window scale: %.2f"), scale) )
             Window:SetScale(scale)
-            if Window2 then Window2:SetScale(scale) end
-            if Fname then
-                Turbine.PluginData.Save(Turbine.DataScope.Server,Fname,Settings)
+            Settings.pos1=ClampWindow(Window,scale) or Settings.pos1
+            if Window2 then
+                Window2:SetScale(scale)
+                Settings.pos2=ClampWindow(Window2,scale) or Settings.pos2
             end
+            SafeSave(Fname,Settings)
         end
     end
 
@@ -90,7 +109,7 @@ function Options_Init(print,Settings,Window,Fname,Window2)
             print((Settings.auto and "En" or "Dis").."abled Auto-open.")
         end
         if Fname then
-            Turbine.PluginData.Save(Turbine.DataScope.Server,Fname,Settings)
+            SafeSave(Fname,Settings)
             print(L("Paramètres enregistrés.","Settings saved."))
         end
     end
@@ -107,7 +126,7 @@ function Options_Init(print,Settings,Window,Fname,Window2)
             print((Settings.esc and "En" or "Dis").."abled ignore Esc key.")
         end
         if Fname then
-            Turbine.PluginData.Save(Turbine.DataScope.Server,Fname,Settings)
+            SafeSave(Fname,Settings)
             print(L("Paramètres enregistrés.","Settings saved."))
         end
     end
