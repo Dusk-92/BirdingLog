@@ -3,6 +3,17 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.15 — 17 septembre 2026
+
+- `/bl fr` ne déduit plus qu'une localisation est active uniquement depuis `frProbeVersion` : FR7.15 maintient désormais un véritable état runtime de localisation.
+- L'état runtime couvre à la fois le probe oiseaux et le probe des récompenses/objets `BL_GID` ; la taille réelle de la queue GID détermine sa fenêtre d'activité attendue.
+- Les demandes manuelles `/bl fr` lancées pendant une passe active sont regroupées puis relancées dès que l'état runtime redevient libre.
+- `BL_IsLocalizationBusy()` expose cet état runtime sans transformer le marqueur persistant `frProbeVersion` en pseudo-indicateur d'activité.
+- La sécurité de timeout reste présente afin qu'un contrôle Turbine bloqué ne puisse pas empêcher définitivement un refresh manuel.
+- Après un échec d'autosave, `BL715_SaveRetryPending` reste actif et la prochaine modification réelle des données retente immédiatement la sauvegarde, même si le compteur périodique est encore inférieur à 10.
+- Une sauvegarde réussie efface le retry pending, remet le compteur d'observations à zéro et réarme le message d'erreur pour un éventuel futur incident.
+- Aucun changement n'est apporté aux données oiseaux, traductions FR, zones ou à `Dusk/Common`.
+
 ## 1.3-FR7.14 — 17 septembre 2026
 
 - Un kit accepté par Turbine mais temporairement non résolu est maintenant retiré de `BL_Totals` pendant la construction de l'interface, puis restauré silencieusement une fois FR7.11 chargé.
