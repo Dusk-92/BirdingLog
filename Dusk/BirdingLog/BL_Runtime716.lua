@@ -21,6 +21,7 @@ local BL716_LocalizationQueued=false
 local BL716_LocalizationQueuedForce=false
 local BL716_DeferredRefresh=false
 local BL716_ShortcutGuard=false
+local BL716_Unloading=false
 
 local BL716_SaveRuntimeData
 
@@ -87,7 +88,7 @@ local function BL716_RuntimeSaveItems()
 end
 
 local function BL716_StartQueuedLocalizationIfPossible()
-    if BL716_SaveBusy or BL716_LocalizationBusy or not BL716_LocalizationQueued then return end
+    if BL716_Unloading or BL716_SaveBusy or BL716_LocalizationBusy or not BL716_LocalizationQueued then return end
     local force=BL716_LocalizationQueuedForce
     BL716_LocalizationQueued=false
     BL716_LocalizationQueuedForce=false
@@ -95,6 +96,7 @@ local function BL716_StartQueuedLocalizationIfPossible()
 end
 
 BL716_SaveRuntimeData=function()
+    if BL716_Unloading then return false end
     if BL716_LocalizationBusy then
         BL716_SaveQueued=true
         return false
@@ -107,6 +109,8 @@ BL716_SaveRuntimeData=function()
     BL716_SaveBusy=true
     BL716_SaveBatch(BL716_RuntimeSaveItems(),function(success,message)
         BL716_SaveBusy=false
+        if BL716_Unloading then return end
+
         if success then
             BL716_ObservationsSinceSave=0
             BL716_SaveRetryPending=false
@@ -352,11 +356,15 @@ function BL_Shortcut(sender,name,iname,icat)
         return nil,false
     end
 
+    if type(itemData)~="string" or itemData=="" then
+        clearSlot()
+        BL_PrintE(BL_Lang=="FR" and "Données de raccourci invalides." or "Invalid shortcut data.")
+        return nil,false
+    end
+
     local bypass=sender:IsShiftKeyDown()==true
     local item=shortcut:GetItem()
     if not item then
-        -- The shortcut itself is valid but LOTRO has not resolved its item yet.
-        -- Preserve it; the next load/runtime validation will retry safely.
         BL_Print(BL_Lang=="FR" and
             (name.." enregistré ; validation de l’objet différée.") or
             (name.." saved; item validation deferred."))
@@ -366,8 +374,13 @@ function BL_Shortcut(sender,name,iname,icat)
     if bypass then iname=nil icat=nil end
     if icat then
         local info=item:GetItemInfo()
-        local category=info and info:GetCategory()
-        if category~=icat then
+        if not info then
+            BL_Print(BL_Lang=="FR" and
+                (name.." enregistré ; validation de la catégorie différée.") or
+                (name.." saved; category validation deferred."))
+            return itemData,bypass
+        end
+        if info:GetCategory()~=icat then
             BL_PrintE(BL_Lang=="FR" and
                 (item:GetName().." n’est pas un kit d’ornithologie valide.") or
                 (item:GetName().." is not a valid Birding Kit."))
@@ -468,6 +481,7 @@ local function BL716_ProbeLocalizedItemName(id)
 end
 
 local function BL716_EndLocalization(success,found,message)
+    if BL_RebuildNameIndex then BL_RebuildNameIndex() end
     BL716_LocalizationBusy=false
     BL716_LocalizationRunner=nil
 
@@ -502,7 +516,7 @@ local function BL716_PersistLocalization(signature,found,generation)
         {scope=Turbine.DataScope.Server,key="BL_GNames",value=BL_GNames},
     }
     BL716_SaveBatch(cacheItems,function(cacheOK,message)
-        if generation~=BL716_LocalizationGeneration then return end
+        if generation~=BL716_LocalizationGeneration or BL716_Unloading then return end
         if not cacheOK or type(BL_Options)~="table" then
             BL716_EndLocalization(false,found,message)
             return
@@ -512,14 +526,13 @@ local function BL716_PersistLocalization(signature,found,generation)
         BL_Options.frProbeVersion=4
         BL_Options.frProbeSignature=signature
         BL716_SaveOne(Turbine.DataScope.Server,"BL_Options",BL_Options,function(optionsOK,optionsMessage)
-            if generation~=BL716_LocalizationGeneration then return end
+            if generation~=BL716_LocalizationGeneration or BL716_Unloading then return end
             if not optionsOK then
                 BL_Options.frProbeVersion=oldVersion
                 BL_Options.frProbeSignature=oldSignature
                 BL716_EndLocalization(false,found,optionsMessage)
                 return
             end
-            if BL_RebuildNameIndex then BL_RebuildNameIndex() end
             BL716_EndLocalization(true,found,nil)
         end)
     end)
@@ -542,7 +555,7 @@ function BL_CancelLocalization()
 end
 
 function BL_AutoLocalize(force)
-    if BL_Lang~="FR" then return end
+    if BL_Lang~="FR" or BL716_Unloading then return end
 
     if BL716_SaveBusy then
         if force and not BL716_LocalizationQueuedForce then
@@ -686,6 +699,7 @@ local function BL716_ChatHandler(sender,args)
             if BL_Names[id]~=name then learned=true end
             BL_ID[id].ln=name
             BL_Names[id]=name
+            if learned and BL_RebuildNameIndex then BL_RebuildNameIndex() end
         end
 
         local before=S.SafeCount(BL_Totals[id])
@@ -1017,6 +1031,7 @@ local function BL716_FlushOnUnload()
 end
 
 Plugins.BirdingLog.Unload=function(sender,args)
+    BL716_Unloading=true
     if BL716_ChatGeneration==BL_ChatGeneration then
         BL_ChatGeneration=BL_ChatGeneration+1
     end
