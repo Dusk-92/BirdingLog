@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.10**
+- Version du fork : **1.3-FR7.11**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -19,8 +19,10 @@ Cette version conserve le fonctionnement original de Birding Log tout en amélio
 - récupération progressive des futurs noms localisés directement depuis le client LOTRO ;
 - cache séparé des noms localisés des récompenses/objets d'ornithologie ;
 - protections contre les doubles handlers de chat après reload ;
-- validation des anciennes sauvegardes et du kit restauré ;
+- validation des anciennes sauvegardes, de la maîtrise et des raccourcis restaurés ;
+- assainissement des options sensibles avant création de la fenêtre ;
 - neutralisation des compteurs non numériques issus de sauvegardes anciennes/corrompues ;
+- fenêtre restaurée maintenue dans les limites de la résolution actuelle ;
 - gestion plus sûre des noms localisés identiques ;
 - détection de zone déterministe lorsque plusieurs rectangles se chevauchent ;
 - décodage PluginData durci sans exécuter le contenu des sauvegardes comme du code Lua.
@@ -65,6 +67,8 @@ Depuis **FR7.10**, BirdingLog calcule une signature déterministe à partir des 
 
 La signature n'est enregistrée qu'une fois les probes nécessaires réellement terminés. Si le plugin est fermé avant la fin, la signature n'est pas validée et la tentative reprendra au prochain chargement. Un ID que le client LOTRO ne sait pas résoudre n'est donc pas retenté à chaque connexion une fois une passe complète terminée. La commande `/bl fr` reste disponible pour forcer une nouvelle tentative manuelle à tout moment.
 
+FR7.11 conserve la signature `BL710` car cette version ne change ni les ID d'oiseaux ni les ID de récompenses : aucune nouvelle passe de localisation n'est donc déclenchée inutilement.
+
 Les noms localisés des récompenses et objets d'ornithologie appris dynamiquement sont conservés séparément dans `BL_GNames`. Une récompense déjà connue par son ID est reconnue même lorsque `/bl track` est désactivé ; ce mode sert uniquement aux objets réellement inconnus.
 
 Les caches appris `BL_Names` et `BL_GNames` sont appliqués/persistés comme caches français : ils ne doivent pas remplacer les noms natifs d'un lancement EN/DE.
@@ -73,14 +77,19 @@ Les caches appris `BL_Names` et `BL_GNames` sont appliqués/persistés comme cac
 
 BirdingLog conserve notamment :
 
-- les totaux du personnage ;
+- les totaux du personnage et sa maîtrise d'ornithologie ;
 - les observations par zone ;
 - les options de fenêtre ;
 - la position de l'icône ;
+- les raccourcis du kit, de l'arme et du second emplacement ;
 - les noms localisés d'oiseaux appris depuis LOTRO ;
 - les noms localisés des récompenses/objets appris depuis LOTRO.
 
-Les anciennes données restent compatibles avec le fork. Lors du chargement, les compteurs d'oiseaux et de zones non numériques sont ramenés à une valeur sûre avant toute addition, et une entrée de zone corrompue est recréée sous forme de table vide.
+Les anciennes données restent compatibles avec le fork. Depuis FR7.11, les champs qui peuvent être consommés pendant la création de l'interface sont validés **avant** l'import complet de `BL_Main` : positions de fenêtre, échelle, maîtrise et raccourcis invalides sont neutralisés avant d'atteindre les contrôles Turbine.
+
+Les positions sauvegardées sont converties en coordonnées numériques valides et la fenêtre principale est ensuite re-bornée à l'écran actuel. L'échelle est limitée à la plage utilisée par le panneau d'options (`0.5` à `2.0`). Une maîtrise non numérique est ignorée proprement.
+
+Les compteurs d'oiseaux et de zones non numériques sont ramenés à une valeur sûre avant toute addition, et une entrée de zone corrompue est recréée sous forme de table vide.
 
 Sur les clients FR/DE, la bibliothèque historique `Dusk/Common` convertit les valeurs PluginData afin de contourner les problèmes de séparateur décimal. Depuis FR7.9, cette conversion n'utilise plus `loadstring()` : les nombres sont décodés avec `tonumber()` en acceptant point ou virgule, et les données invalides sont conservées sans faire planter le chargement.
 
