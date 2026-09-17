@@ -34,6 +34,8 @@ changelog = read("CHANGELOG.md")
 loader716 = read("Dusk/BirdingLog/BL_Loader716.lua")
 runtime716 = read("Dusk/BirdingLog/BL_Runtime716.lua")
 runtime717 = read("Dusk/BirdingLog/BL_Runtime717.lua")
+window = read("Dusk/BirdingLog/BL_Window.lua")
+icon = read("Dusk/BirdingLog/BL_Icon.lua")
 data_en = active_lines(read("Dusk/BirdingLog/BL_Data.lua"))
 data_de = active_lines(read("Dusk/BirdingLog/BL_Data_DE.lua"))
 data_fr = active_lines(read("Dusk/BirdingLog/BL_FR.lua"))
@@ -44,6 +46,8 @@ require(version_match is not None, "plugin version is missing")
 require(package_match is not None, "plugin package is missing")
 version = version_match.group(1).strip() if version_match else ""
 package = package_match.group(1).strip() if package_match else ""
+fr_match = re.search(r"FR7\.(\d+)$", version)
+fr_revision = int(fr_match.group(1)) if fr_match else 0
 
 require(f"**{version}**" in readme, f"README version does not match {version}")
 first_update = next((line for line in updates.splitlines() if line.strip()), "")
@@ -57,7 +61,7 @@ require(bool(package_path and package_path.exists()), f"plugin package target do
 # FR7.16+ keeps BL_Loader716 as the single plugin entry point. Later runtime
 # compatibility fixes may be imported from that loader, but the old loader stack
 # must never become active again.
-if version.endswith("FR7.16") or version.endswith("FR7.17"):
+if fr_revision >= 16:
     require(package == "Dusk.BirdingLog.BL_Loader716",
             "FR7.16+ must use BL_Loader716 as its only plugin entry point")
 
@@ -87,15 +91,31 @@ for needle, description in [
 require("GIDFrames" not in runtime716,
         "FR7.16 must not reintroduce frame-count localization busy estimation")
 
-if version.endswith("FR7.17"):
+if fr_revision >= 17:
     require('import "Dusk.BirdingLog.BL_Runtime717"' in loader716,
-            "FR7.17 must import BL_Runtime717 after the consolidated runtime")
+            "FR7.17+ must import BL_Runtime717 after the consolidated runtime")
     require('BL_Totals.kitBypass=true' in loader716,
-            "FR7.17 must bypass the legacy category check for restored kits before Runtime716")
+            "FR7.17+ must bypass the legacy category check for restored kits before Runtime716")
     require("GetCategory(" not in runtime717 and "BL_BirdingKit" not in runtime717,
-            "FR7.17 kit runtime must not validate kits through the legacy category constant")
+            "FR7.17+ kit runtime must not validate kits through the legacy category constant")
     require("ShortcutType.Item" in runtime717 and "BL_SaveRuntimeData" in runtime717,
-            "FR7.17 kit runtime lost item validation or immediate persistence")
+            "FR7.17+ kit runtime lost item validation or immediate persistence")
+
+if fr_revision >= 18:
+    require("BL_IconWindow:SetZOrder(0)" in icon,
+            "FR7.18+ launcher must stay on the normal LOTRO UI layer")
+    require("BL_IconWindow:SetZOrder(1000)" not in icon,
+            "FR7.18+ must not restore the always-on-top launcher layer")
+
+if fr_revision >= 19:
+    require("function BL_Window:RefreshProficiency()" in window,
+            "FR7.19+ main window lost its Birding proficiency refresh method")
+    require("Ornithologie : niveau " in window and "Birding: level " in window,
+            "FR7.19+ main window lost localized proficiency text")
+    require("pairs(BL_Title or {})" in window,
+            "FR7.19+ proficiency display no longer resolves the highest Birding title")
+    require("self:SetWantsUpdates( true )" in window,
+            "FR7.19+ proficiency display is no longer refreshed while the window is visible")
 
 # Security regression guard: PluginData decoding must never execute save text.
 for lua_path in ROOT.rglob("*.lua"):
