@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.12**
+- Version du fork : **1.3-FR7.13**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -20,7 +20,8 @@ Cette version conserve le fonctionnement original de Birding Log tout en amélio
 - cache séparé des noms localisés des récompenses/objets d'ornithologie ;
 - protections contre les doubles handlers de chat après reload ;
 - validation des anciennes sauvegardes, de la maîtrise et des raccourcis restaurés ;
-- test réel des données de Quickslot sauvegardées avant création de l'interface ;
+- détection des Quickslots silencieusement rejetés par Turbine ;
+- conservation d'un kit accepté mais temporairement non résolu ;
 - assainissement et bornage des options sensibles avant création de la fenêtre ;
 - neutralisation des compteurs non numériques issus de sauvegardes anciennes/corrompues ;
 - fenêtre restaurée maintenue dans les limites de la résolution actuelle ;
@@ -72,7 +73,7 @@ La signature n'est enregistrée qu'une fois les probes nécessaires réellement 
 
 Depuis **FR7.12**, `/bl fr` ne se contente plus de rechercher les noms absents : les noms provenant uniquement des caches dynamiques sont temporairement remis en file de probe. Les traductions officielles intégrées à `BL_FR.lua` ne sont jamais effacées. L'ancien nom appris reste utilisé comme repli si LOTRO ne renvoie rien de nouveau.
 
-FR7.11 et FR7.12 conservent la signature `BL710` car ces versions ne changent ni les ID d'oiseaux ni les ID de récompenses : aucune nouvelle passe automatique de localisation n'est déclenchée inutilement.
+FR7.11 à FR7.13 conservent la signature `BL710` car ces versions ne changent ni les ID d'oiseaux ni les ID de récompenses : aucune nouvelle passe automatique de localisation n'est déclenchée inutilement.
 
 Les noms localisés des récompenses et objets d'ornithologie appris dynamiquement sont conservés séparément dans `BL_GNames`. Une récompense déjà connue par son ID est reconnue même lorsque `/bl track` est désactivé ; ce mode sert uniquement aux objets réellement inconnus.
 
@@ -92,7 +93,9 @@ BirdingLog conserve notamment :
 
 Les anciennes données restent compatibles avec le fork. Depuis FR7.11, les champs qui peuvent être consommés pendant la création de l'interface sont validés **avant** l'import complet de `BL_Main` : positions de fenêtre, échelle, maîtrise et structures de raccourci invalides sont neutralisées avant d'atteindre les contrôles Turbine.
 
-FR7.12 renforce encore cette étape : chaque donnée sauvegardée de `kit`, `wpn` et `shl` est testée dans un `Shortcut(Item, data)` puis un `Quickslot:SetShortcut()` caché et protégé par `pcall()`. Si Turbine refuse l'ancienne donnée, elle est supprimée avant que `BL_Window` ne tente de l'utiliser.
+FR7.12 a ajouté un test réel des données sauvegardées de `kit`, `wpn` et `shl` avec un `Shortcut(Item, data)` puis un `Quickslot:SetShortcut()` caché et protégé par `pcall()`.
+
+Depuis **FR7.13**, cette validation contrôle aussi le résultat retourné par Turbine : le Quickslot doit rester de type `Item` et restituer exactement la donnée sauvegardée. Un rejet silencieux est donc détecté. Pour le kit d'ornithologie, un objet accepté mais dont `GetItemInfo()` n'est pas encore disponible est conservé ; il n'est rejeté que si LOTRO le résout et que sa catégorie est différente de `BL_BirdingKit`.
 
 Les positions sauvegardées sont converties en coordonnées numériques valides puis bornées à l'écran actuel **avant** la création de la fenêtre. L'échelle est limitée à la plage utilisée par le panneau d'options (`0.5` à `2.0`). Une maîtrise non numérique est ignorée proprement.
 
