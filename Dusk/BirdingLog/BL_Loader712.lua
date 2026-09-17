@@ -1,4 +1,4 @@
--- BirdingLog FR7.13 compatibility patch.
+-- BirdingLog FR7.14 compatibility patch.
 -- File name kept as BL_Loader712 to avoid another loader layer. Loaded before
 -- FR7.11 so legacy shortcut data and window coordinates can be validated before
 -- BL_Main creates any Turbine UI controls.
@@ -8,7 +8,10 @@ import "Dusk.Common"
 
 local BL712_RawLoad = Turbine.PluginData.Load
 local BL712_ShortcutProbe = nil
-local BL713_UnresolvedKitData = nil
+local BL714_UnresolvedKitData = nil
+local BL714_DeferredRefresh = nil
+local BL714_BypassProbeWait = false
+local BL714_SaveWarningShown = false
 
 local function BL712_Clamp(value,minValue,maxValue)
     local n=tonumber(value)
@@ -88,8 +91,15 @@ Turbine.PluginData.Load=function(scope,key,callback)
     end
     if key=="BL_Totals" and type(value)=="table" then
         local kit,kitUnresolved=BL713_ValidateShortcutData(value.kit,BL_BirdingKit)
-        value.kit=kit
-        BL713_UnresolvedKitData=(kit and kitUnresolved) and kit or nil
+        if kit and kitUnresolved then
+            -- Keep the data out of BL_Main/FR7.11 while the item is unresolved.
+            -- It will be restored quietly after those loaders finish.
+            BL714_UnresolvedKitData=kit
+            value.kit=nil
+        else
+            BL714_UnresolvedKitData=nil
+            value.kit=kit
+        end
         value.wpn=BL713_ValidateShortcutData(value.wpn)
         value.shl=BL713_ValidateShortcutData(value.shl)
     end
@@ -102,29 +112,77 @@ end)
 Turbine.PluginData.Load=BL712_RawLoad
 if not BL712_LoadOK then error(BL712_LoadError) end
 
--- FR7.11 historically cleared a kit when GetItemInfo() was temporarily nil.
--- Restore only a shortcut that our pre-load probe accepted but could not resolve.
--- Resolved wrong-category items never reach this path.
-if BL713_UnresolvedKitData and BL_Totals and not BL_Totals.kit and BL_window and BL_window.kit then
-    local restored=pcall(function()
-        local shortcut=Turbine.UI.Lotro.Shortcut(Turbine.UI.Lotro.ShortcutType.Item,BL713_UnresolvedKitData)
-        BL_window.kit:SetShortcut(shortcut)
+-- Restore a prevalidated but unresolved kit without firing the historical
+-- ShortcutChanged callback. Revalidate once more in case LOTRO resolved it while
+-- the rest of the plugin was loading; a newly resolved wrong category is rejected.
+if BL714_UnresolvedKitData and BL_Totals and BL_window and BL_window.kit then
+    local control=BL_window.kit
+    local previousChanged=control.ShortcutChanged
+    control.ShortcutChanged=nil
+
+    local valid=false
+    local ok=pcall(function()
+        local shortcut=Turbine.UI.Lotro.Shortcut(Turbine.UI.Lotro.ShortcutType.Item,BL714_UnresolvedKitData)
+        control:SetShortcut(shortcut)
+        local resolved=control:GetShortcut()
+        if not resolved or resolved:GetType()~=Turbine.UI.Lotro.ShortcutType.Item then return end
+        if resolved:GetData()~=BL714_UnresolvedKitData then return end
+
+        local item=resolved:GetItem()
+        local info=item and item:GetItemInfo()
+        if info and info:GetCategory()~=BL_BirdingKit then return end
+        valid=true
     end)
-    if restored then
-        BL_Totals.kit=BL713_UnresolvedKitData
+
+    if not ok or not valid then
+        pcall(function()
+            control:SetShortcut(Turbine.UI.Lotro.Shortcut())
+            control:SetBackground("Dusk/BirdingLog/Kit.tga")
+        end)
+    end
+
+    control.ShortcutChanged=previousChanged
+    BL_Totals.kit=(ok and valid) and BL714_UnresolvedKitData or nil
+    BL714_UnresolvedKitData=nil
+end
+
+-- /bl fr must really refresh names learned dynamically. If a previous automatic
+-- bird-name probe is still finishing, defer the manual refresh until that pass
+-- completes instead of silently losing the user's request.
+local BL712_PreviousAutoLocalize=BL_AutoLocalize
+local function BL714_ScheduleDeferredRefresh()
+    if BL714_DeferredRefresh then return end
+
+    BL_Print(BL_Lang=="FR" and
+        "Localisation FR déjà en cours ; le rafraîchissement manuel sera relancé juste après." or
+        "Localization already in progress; the manual refresh will run afterwards.")
+
+    local frames=0
+    BL714_DeferredRefresh=Turbine.UI.Control()
+    BL714_DeferredRefresh:SetWantsUpdates(true)
+    BL714_DeferredRefresh.Update=function(sender,args)
+        frames=frames+1
+        local finished=BL_Options and BL_Options.frProbeVersion==3
+        if finished or frames>=240 then
+            sender:SetWantsUpdates(false)
+            BL714_DeferredRefresh=nil
+            if not finished then BL714_BypassProbeWait=true end
+            BL_AutoLocalize(true)
+        end
     end
 end
 
--- /bl fr must really refresh names learned dynamically. The embedded BL_FR
--- database normally never enters BL_Names/BL_GNames, so only cached names are
--- temporarily hidden while FR7.11 builds its probe queues. They are restored
--- immediately as a fallback; successful probes overwrite them asynchronously.
-local BL712_PreviousAutoLocalize=BL_AutoLocalize
 if type(BL712_PreviousAutoLocalize)=="function" then
     BL_AutoLocalize=function(force)
         if not force or BL_Lang~="FR" then
             return BL712_PreviousAutoLocalize(force)
         end
+
+        if not BL714_BypassProbeWait and BL_Options and BL_Options.frProbeVersion~=3 then
+            BL714_ScheduleDeferredRefresh()
+            return
+        end
+        BL714_BypassProbeWait=false
 
         local restoreBirds,restoreGIDs={},{}
 
@@ -184,7 +242,18 @@ local function BL712_SaveRuntimeData()
         end
     end)
     BL712_SaveBusy=false
-    if ok then BL712_ObservationsSinceSave=0 end
+
+    if ok then
+        BL712_ObservationsSinceSave=0
+        BL714_SaveWarningShown=false
+    elseif not BL714_SaveWarningShown then
+        BL714_SaveWarningShown=true
+        pcall(function()
+            BL_PrintE(BL_Lang=="FR" and
+                "La sauvegarde automatique a échoué ; BirdingLog réessaiera au prochain changement." or
+                "Automatic save failed; BirdingLog will retry on the next change.")
+        end)
+    end
     return ok
 end
 
@@ -295,6 +364,10 @@ local BL712_OldUnload=Plugins.BirdingLog.Unload
 Plugins.BirdingLog.Unload=function(sender,args)
     if BL712_Generation==BL712_ChatGeneration then
         BL712_ChatGeneration=BL712_ChatGeneration+1
+    end
+    if BL714_DeferredRefresh then
+        BL714_DeferredRefresh:SetWantsUpdates(false)
+        BL714_DeferredRefresh=nil
     end
     BL712_SaveRuntimeData()
 
