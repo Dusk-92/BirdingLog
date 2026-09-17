@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.16**
+- Version du fork : **1.3-FR7.17**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -19,7 +19,7 @@ Cette version conserve l'interface et les données historiques de Birding Log to
 - caches séparés pour les noms d'oiseaux et d'objets appris dynamiquement ;
 - Quickslots sauvegardés vérifiés contre les rejets silencieux de Turbine ;
 - récupération automatique d'un raccourci temporairement indisponible ;
-- conservation explicite du bypass **Maj** utilisé historiquement pour un kit ;
+- slot Kit compatible avec les kits LOTRO actuels sans dépendre de l'ancienne catégorie `104` ;
 - assainissement des anciennes sauvegardes avant création de l'interface ;
 - autosave périodique et sauvegardes immédiates des changements importants ;
 - sauvegardes runtime vérifiées avec le callback réel de `PluginData.Save` ;
@@ -58,7 +58,7 @@ Dans LOTRO, actualiser le gestionnaire de plugins puis charger **BirdingLog**.
 
 Le bouton **Détecter zone** utilise la commande LOTRO `;loc` (ou son équivalent localisé) et les coordonnées connues par BirdingLog. Les frontières réelles de certaines zones ne sont pas parfaitement rectangulaires : le menu manuel reste disponible pour corriger un cas de frontière exceptionnel.
 
-## Architecture FR7.16
+## Architecture FR7.16+
 
 Depuis **FR7.16**, le point d'entrée est :
 
@@ -79,6 +79,8 @@ Le runtime FR7.16 possède un seul propriétaire pour :
 - les commandes BirdingLog ;
 - le nettoyage à l'unload.
 
+**FR7.17** ajoute une petite surcouche `BL_Runtime717.lua` uniquement pour le slot **Kit**. Elle ne remplace pas le runtime consolidé : elle neutralise spécifiquement l'ancienne hypothèse `BL_BirdingKit=104`, qui rejette aujourd'hui le véritable Kit d'ornithologie de base de LOTRO.
+
 ## Données françaises et localisation dynamique
 
 La base officielle française est liée aux **ID internes LOTRO**, et non aux noms anglais. Les traductions connues sont chargées depuis `BL_FR.lua`.
@@ -94,7 +96,7 @@ Les noms appris dynamiquement sont conservés séparément :
 
 FR7.16 utilise **un seul runner de localisation réel** pour oiseaux et objets. Il n'y a plus de second probe GID ni d'estimation de son activité par nombre de frames. Une demande `/bl fr` reçue pendant une passe ou une sauvegarde est mise en attente puis rejouée proprement.
 
-La signature de base passe au préfixe **`BL716`**. Elle n'est validée qu'après :
+La signature de base utilise le préfixe **`BL716`**. Elle n'est validée qu'après :
 
 1. la fin réelle du probe ;
 2. la sauvegarde réussie de `BL_Names` ;
@@ -121,9 +123,11 @@ Un raccourci momentanément rejeté par LOTRO n'est plus détruit. FR7.16 le pla
 
 Si le joueur modifie ou vide ensuite l'emplacement, l'entrée pending est supprimée.
 
-Pour le kit d'ornithologie, la catégorie est vérifiée dès que `GetItemInfo()` est réellement disponible. Un kit accepté mais pas encore résolu est conservé et revalidé plus tard. Le bypass historique obtenu avec **Maj** est désormais enregistré avec le raccourci et reste donc cohérent après un reload.
+Depuis **FR7.17**, le slot **Kit d'ornithologie** n'utilise plus `GetItemInfo():GetCategory()` ni la constante historique `BL_BirdingKit=104`. Le test runtime dans LOTRO a montré que cette valeur pouvait rejeter le véritable **Kit d'ornithologie de base**. Le slot Kit accepte donc désormais tout raccourci de type `Item` dont les données sont valides, comme les emplacements Arme et 2e slot. Cette règle s'applique aussi aux futurs kits que LOTRO pourrait exposer avec une autre catégorie interne.
 
-Une seconde validation est effectuée sur les vrais Quickslots après construction de la fenêtre afin de couvrir le cas où le probe de préflight accepte un raccourci mais où le contrôle réel le rejette quelques instructions plus tard.
+Les kits déjà sauvegardés sont protégés avant l'import de `BL_Runtime716`, afin que l'ancienne vérification par catégorie ne puisse pas les supprimer pendant le chargement. Après construction de la fenêtre, `BL_Runtime717.lua` prend uniquement en charge le handler du slot Kit et conserve la sauvegarde immédiate ainsi que la gestion des raccourcis pending.
+
+Une seconde validation est toujours effectuée sur les vrais Quickslots après construction de la fenêtre afin de couvrir le cas où le probe de préflight accepte un raccourci mais où le contrôle réel le rejette quelques instructions plus tard.
 
 ## Sauvegardes et crash-loss protection
 
@@ -142,7 +146,7 @@ FR7.16 sérialise ces écritures pour éviter que plusieurs sauvegardes des mêm
 
 Contrairement aux anciennes couches qui considéraient qu'un `pcall()` réussi signifiait que la sauvegarde avait réussi, FR7.16 utilise le **callback `PluginData.Save(success, message)`**. Un échec réel laisse le retry actif et la modification suivante provoque une nouvelle tentative.
 
-`Dusk/Common/Options.lua` route également les sauvegardes de `BL_Options` vers cet ordonnanceur lorsque FR7.16 est chargé. Les mouvements rapides du curseur d'échelle sont donc coalescés au lieu de lancer des écritures concurrentes. La fenêtre est immédiatement re-bornée à l'écran après un changement d'échelle.
+`Dusk/Common/Options.lua` route également les sauvegardes de `BL_Options` vers cet ordonnanceur lorsque le runtime consolidé est chargé. Les mouvements rapides du curseur d'échelle sont donc coalescés au lieu de lancer des écritures concurrentes. La fenêtre est immédiatement re-bornée à l'écran après un changement d'échelle.
 
 ## Compatibilité des données
 
@@ -156,18 +160,19 @@ Sur les clients FR/DE, `Dusk/Common` conserve le contournement du bug de sépara
 
 ## Audit automatique
 
-Le dépôt contient désormais `.github/workflows/audit.yml` et `tools/audit_repo.py`.
+Le dépôt contient `.github/workflows/audit.yml` et `tools/audit_repo.py`.
 
 À chaque push ou pull request, GitHub Actions :
 
 - compile **tous les fichiers Lua avec Lua 5.1** ;
 - vérifie la cohérence version / README / changelog / `Updates.txt` ;
 - vérifie que le point d'entrée déclaré existe ;
-- empêche FR7.16 de revenir vers l'ancien empilement de loaders ;
-- compare les ensembles d'IDs oiseaux EN et DE ;
+- empêche le retour vers l'ancien empilement de loaders ;
+- compare les ensembles d'IDs oiseaux et objets EN/DE ;
 - vérifie toutes les références oiseaux → zones ;
-- exige une traduction FR intégrée pour chaque oiseau actuel ;
-- vérifie les protections essentielles du runtime FR7.16 ;
+- exige une traduction FR intégrée pour chaque oiseau et objet actuel ;
+- vérifie les protections essentielles du runtime consolidé ;
+- pour FR7.17, vérifie que `BL_Runtime717.lua` n'utilise ni `GetCategory()` ni `BL_BirdingKit` pour valider le kit ;
 - bloque le retour de `loadstring()`.
 
 Cela ne remplace pas un test dans le moteur Turbine de LOTRO, mais attrape automatiquement une grande partie des régressions structurelles avant publication.
