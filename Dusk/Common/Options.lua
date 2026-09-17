@@ -55,6 +55,9 @@ function Options_Init(print,Settings,Window,Fname,Window2)
             wScale.lbl:SetText( string.format(L("Échelle de la fenêtre : %.2f","Window scale: %.2f"), scale) )
             Window:SetScale(scale)
             if Window2 then Window2:SetScale(scale) end
+            if Fname then
+                Turbine.PluginData.Save(Turbine.DataScope.Server,Fname,Settings)
+            end
         end
     end
 
