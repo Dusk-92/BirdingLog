@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.13**
+- Version du fork : **1.3-FR7.14**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -21,12 +21,13 @@ Cette version conserve le fonctionnement original de Birding Log tout en amélio
 - protections contre les doubles handlers de chat après reload ;
 - validation des anciennes sauvegardes, de la maîtrise et des raccourcis restaurés ;
 - détection des Quickslots silencieusement rejetés par Turbine ;
-- conservation d'un kit accepté mais temporairement non résolu ;
+- restauration silencieuse d'un kit accepté mais temporairement non résolu ;
 - assainissement et bornage des options sensibles avant création de la fenêtre ;
 - neutralisation des compteurs non numériques issus de sauvegardes anciennes/corrompues ;
 - fenêtre restaurée maintenue dans les limites de la résolution actuelle ;
 - autosave périodique des observations et sauvegarde immédiate des changements importants ;
-- vrai rafraîchissement manuel des noms appris dynamiquement avec `/bl fr` ;
+- signalement d'un échec synchrone d'autosave avec nouvelle tentative ultérieure ;
+- vrai rafraîchissement manuel des noms appris dynamiquement avec `/bl fr`, différé si un probe est déjà en cours ;
 - gestion plus sûre des noms localisés identiques ;
 - détection de zone déterministe lorsque plusieurs rectangles se chevauchent ;
 - décodage PluginData durci sans exécuter le contenu des sauvegardes comme du code Lua.
@@ -73,7 +74,9 @@ La signature n'est enregistrée qu'une fois les probes nécessaires réellement 
 
 Depuis **FR7.12**, `/bl fr` ne se contente plus de rechercher les noms absents : les noms provenant uniquement des caches dynamiques sont temporairement remis en file de probe. Les traductions officielles intégrées à `BL_FR.lua` ne sont jamais effacées. L'ancien nom appris reste utilisé comme repli si LOTRO ne renvoie rien de nouveau.
 
-FR7.11 à FR7.13 conservent la signature `BL710` car ces versions ne changent ni les ID d'oiseaux ni les ID de récompenses : aucune nouvelle passe automatique de localisation n'est déclenchée inutilement.
+Depuis **FR7.14**, si `/bl fr` est demandé pendant qu'une passe automatique oiseaux est encore active, la demande n'est plus perdue : BirdingLog attend la fin de cette passe puis relance le refresh manuel. Une attente de sécurité bornée évite qu'un ancien état incomplet ne bloque définitivement la commande.
+
+FR7.11 à FR7.14 conservent la signature `BL710` car ces versions ne changent ni les ID d'oiseaux ni les ID de récompenses : aucune nouvelle passe automatique de localisation n'est déclenchée inutilement.
 
 Les noms localisés des récompenses et objets d'ornithologie appris dynamiquement sont conservés séparément dans `BL_GNames`. Une récompense déjà connue par son ID est reconnue même lorsque `/bl track` est désactivé ; ce mode sert uniquement aux objets réellement inconnus.
 
@@ -97,11 +100,15 @@ FR7.12 a ajouté un test réel des données sauvegardées de `kit`, `wpn` et `sh
 
 Depuis **FR7.13**, cette validation contrôle aussi le résultat retourné par Turbine : le Quickslot doit rester de type `Item` et restituer exactement la donnée sauvegardée. Un rejet silencieux est donc détecté. Pour le kit d'ornithologie, un objet accepté mais dont `GetItemInfo()` n'est pas encore disponible est conservé ; il n'est rejeté que si LOTRO le résout et que sa catégorie est différente de `BL_BirdingKit`.
 
+Depuis **FR7.14**, un kit accepté mais encore non résolu est volontairement tenu hors de `BL_Totals` pendant la construction de la fenêtre afin d'éviter la validation historique trop agressive. Il est ensuite restauré avec `ShortcutChanged` temporairement désactivé, puis revalidé une seconde fois. Cela évite le faux message « Objet introuvable » et empêche une mauvaise catégorie apparue entre les deux contrôles d'être réintroduite.
+
 Les positions sauvegardées sont converties en coordonnées numériques valides puis bornées à l'écran actuel **avant** la création de la fenêtre. L'échelle est limitée à la plage utilisée par le panneau d'options (`0.5` à `2.0`). Une maîtrise non numérique est ignorée proprement.
 
 Les compteurs d'oiseaux et de zones non numériques sont ramenés à une valeur sûre avant toute addition, et une entrée de zone corrompue est recréée sous forme de table vide.
 
 Afin de limiter les pertes en cas de crash de LOTRO, FR7.12 sauvegarde automatiquement les données de runtime toutes les **10 observations reconnues**. Les changements de maîtrise, d'équipement, les ajouts manuels et les modifications manuelles de compteur déclenchent une sauvegarde immédiate. Une sauvegarde de consolidation est également faite après le chargement pour persister les anciennes données assainies.
+
+Depuis **FR7.14**, un échec synchrone d'autosave est signalé une seule fois au joueur. Le compteur d'observations n'est pas remis à zéro en cas d'échec, ce qui permet une nouvelle tentative au prochain changement au lieu de masquer la perte potentielle.
 
 Sur les clients FR/DE, la bibliothèque historique `Dusk/Common` convertit les valeurs PluginData afin de contourner les problèmes de séparateur décimal. Depuis FR7.9, cette conversion n'utilise plus `loadstring()` : les nombres sont décodés avec `tonumber()` en acceptant point ou virgule, et les données invalides sont conservées sans faire planter le chargement.
 
