@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import re
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+errors = []
+
+
+def read(path: str) -> str:
+    p = ROOT / path
+    try:
+        return p.read_text(encoding="utf-8")
+    except Exception as exc:
+        errors.append(f"cannot read {path}: {exc}")
+        return ""
+
+
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        errors.append(message)
+
+
+def active_lines(text: str) -> str:
+    # Data tables use whole-line -- comments for disabled entries. Keeping inline
+    # comments is harmless for the simple structural regexes below.
+    return "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("--"))
+
+
+plugin = read("Dusk/BirdingLog.plugin")
+readme = read("README.md")
+updates = read("Dusk/BirdingLog/Updates.txt")
+changelog = read("CHANGELOG.md")
+loader716 = read("Dusk/BirdingLog/BL_Loader716.lua")
+runtime716 = read("Dusk/BirdingLog/BL_Runtime716.lua")
+data_en = active_lines(read("Dusk/BirdingLog/BL_Data.lua"))
+data_de = active_lines(read("Dusk/BirdingLog/BL_Data_DE.lua"))
+data_fr = active_lines(read("Dusk/BirdingLog/BL_FR.lua"))
+
+version_match = re.search(r"<Version>([^<]+)</Version>", plugin)
+package_match = re.search(r"<Package>([^<]+)</Package>", plugin)
+require(version_match is not None, "plugin version is missing")
+require(package_match is not None, "plugin package is missing")
+version = version_match.group(1).strip() if version_match else ""
+package = package_match.group(1).strip() if package_match else ""
+
+require(f"**{version}**" in readme, f"README version does not match {version}")
+first_update = next((line for line in updates.splitlines() if line.strip()), "")
+require(version in first_update, f"Updates.txt first entry does not match {version}")
+require(f"## {version} " in changelog or f"## {version} —" in changelog,
+        f"CHANGELOG has no section for {version}")
+
+package_path = ROOT / (package.replace(".", "/") + ".lua") if package else None
+require(bool(package_path and package_path.exists()), f"plugin package target does not exist: {package}")
+
+# FR7.16 must be the consolidated path, never one of the old compatibility stacks.
+if version.endswith("FR7.16"):
+    require(package == "Dusk.BirdingLog.BL_Loader716",
+            "FR7.16 must use BL_Loader716 as its only plugin entry point")
+
+require('import "Dusk.BirdingLog.BL_Main"' in loader716,
+        "BL_Loader716 must import BL_Main directly")
+require('import "Dusk.BirdingLog.BL_Runtime716"' in loader716,
+        "BL_Loader716 must hand off to BL_Runtime716")
+require('import "Dusk.BirdingLog.BL_Loader"' not in loader716 and
+        'import "Dusk.BirdingLog.BL_Loader712"' not in loader716,
+        "BL_Loader716 must not stack an older compatibility loader")
+
+for needle, description in [
+    ("BL_PendingShortcuts", "pending shortcut recovery"),
+    ("BL716_SaveOne", "callback-based PluginData saves"),
+    ("BL716_SaveBatch", "batched save result tracking"),
+    ("BL_FR_OfficialIDs={}", "fresh official-name index"),
+    ("BL_CancelLocalization", "localization cancellation"),
+    ("Turbine.Shell.RemoveCommand(BL_Command)", "shell-command cleanup"),
+    ("BL716_ProbeLocalizedItemName", "single localization probe owner"),
+]:
+    require(needle in runtime716, f"BL_Runtime716 is missing {description}")
+
+require("GIDFrames" not in runtime716,
+        "FR7.16 must not reintroduce frame-count localization busy estimation")
+
+# Security regression guard: PluginData decoding must never execute save text.
+for lua_path in ROOT.rglob("*.lua"):
+    text = lua_path.read_text(encoding="utf-8")
+    require("loadstring(" not in text,
+            f"unsafe loadstring() returned in {lua_path.relative_to(ROOT)}")
+
+zone_re = re.compile(r"\['([^']+)'\]\s*=\s*\{z\s*=")
+bird_re = re.compile(r'\["([0-9A-F]{5})"\]\s*=\s*\{n\s*=.*?f\s*=\s*\{([^}]*)\}', re.S)
+quoted_re = re.compile(r"['\"]([^'\"]+)['\"]")
+
+
+def parse_zones(text: str):
+    return set(zone_re.findall(text))
+
+
+def parse_birds(text: str):
+    birds = {}
+    for bird_id, refs_text in bird_re.findall(text):
+        refs = quoted_re.findall(refs_text)
+        if bird_id in birds:
+            errors.append(f"duplicate bird ID {bird_id}")
+        birds[bird_id] = refs
+    return birds
+
+
+zones_en = parse_zones(data_en)
+zones_de = parse_zones(data_de)
+birds_en = parse_birds(data_en)
+birds_de = parse_birds(data_de)
+
+require(bool(zones_en), "no EN zones parsed")
+require(bool(birds_en), "no EN bird IDs parsed")
+require(zones_en == zones_de,
+        f"EN/DE zone-code sets differ: EN-only={sorted(zones_en-zones_de)}, DE-only={sorted(zones_de-zones_en)}")
+require(set(birds_en) == set(birds_de),
+        f"EN/DE bird-ID sets differ: EN-only={sorted(set(birds_en)-set(birds_de))}, DE-only={sorted(set(birds_de)-set(birds_en))}")
+
+for lang, birds, zones in [("EN", birds_en, zones_en), ("DE", birds_de, zones_de)]:
+    for bird_id, refs in birds.items():
+        for zone in refs:
+            require(zone in zones, f"{lang} bird {bird_id} references missing zone {zone}")
+
+# Every current bird must have an embedded official FR name. This intentionally
+# fails when SSG adds a bird until the FR table is updated, instead of silently
+# shipping a partially translated database.
+fr_ids = set(re.findall(r'\["([0-9A-F]{5})"\]\s*=\s*"', data_fr))
+missing_fr = sorted(set(birds_en) - fr_ids)
+require(not missing_fr, f"missing embedded FR bird names: {missing_fr}")
+
+zone_fr_match = re.search(r"local\s+ZoneFR\s*=\s*\{(.*?)\n\}", data_fr, re.S)
+fr_zone_codes = set(re.findall(r"\b([A-Za-z][A-Za-z])\s*=", zone_fr_match.group(1))) if zone_fr_match else set()
+require(zones_en <= fr_zone_codes,
+        f"missing FR zone labels: {sorted(zones_en-fr_zone_codes)}")
+
+if errors:
+    print("BirdingLog audit FAILED:")
+    for err in errors:
+        print(f" - {err}")
+    sys.exit(1)
+
+print(f"BirdingLog audit OK — {version}")
+print(f"Zones: {len(zones_en)} | Birds: {len(birds_en)} | Embedded FR IDs: {len(fr_ids)}")
