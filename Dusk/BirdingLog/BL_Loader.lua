@@ -1,22 +1,53 @@
--- BirdingLog FR7.7 runtime hardening layer.
--- Keeps the original BL_Main intact while fixing the audited edge cases safely.
+-- BirdingLog FR7.8 runtime hardening layer.
+-- Keeps the original BL_Main intact while fixing audited edge cases safely.
 
 import "Dusk.Common"
 
 -- Validate BL_Options before BL_Main reads it. The temporary wrapper is restored
 -- even if BL_Main itself throws, so no other plugin inherits our guard.
-local BL77_RawLoad = Turbine.PluginData.Load
+local BL78_RawLoad = Turbine.PluginData.Load
 Turbine.PluginData.Load = function(scope,key,callback)
-    local value = BL77_RawLoad(scope,key,callback)
+    local value = BL78_RawLoad(scope,key,callback)
     if key=="BL_Options" and type(value)~="table" then return {} end
     return value
 end
 
-local BL77_LoadOK,BL77_LoadError = pcall(function()
+local BL78_LoadOK,BL78_LoadError = pcall(function()
     import "Dusk.BirdingLog.BL_Main"
 end)
-Turbine.PluginData.Load = BL77_RawLoad
-if not BL77_LoadOK then error(BL77_LoadError) end
+Turbine.PluginData.Load = BL78_RawLoad
+if not BL78_LoadOK then error(BL78_LoadError) end
+
+-- FR7.8: do not rely only on a hard-coded probe version. If a future BL_Data
+-- update adds birds for which BL_FR has no localized name yet, automatically
+-- allow the client-name probe to run again. This keeps future database updates
+-- self-healing without forcing users to type /bl fr.
+local BL78_BaseAutoLocalize = BL_AutoLocalize
+if type(BL78_BaseAutoLocalize)=="function" then
+    BL_AutoLocalize = function(force)
+        if force then return BL78_BaseAutoLocalize(true) end
+        if BL_Lang~="FR" then return end
+
+        local missing = false
+        for _,t in pairs(BL_ID or {}) do
+            if type(t)=="table" and (not t.ln or t.ln=="") then
+                missing = true
+                break
+            end
+        end
+        if not missing then return end
+
+        -- BL_Main 1.3 used this value as a one-shot gate. Clear only the old
+        -- gate when names are genuinely missing, then let the original gradual
+        -- probe do its normal work and persistence.
+        if BL_Options then BL_Options.frProbeVersion = nil end
+        return BL78_BaseAutoLocalize(false)
+    end
+
+    -- BL_Main may have skipped its startup probe because an older save already
+    -- contained frProbeVersion=3. Re-check once after the database is loaded.
+    BL_AutoLocalize(false)
+end
 
 -- BL_Main installs its normal handler. Remove it from the top before installing
 -- the generation-protected one below; older buried handlers are made inert.
@@ -25,21 +56,21 @@ if BL_ChatHandler and Turbine.Chat.Received==BL_ChatHandler then
 end
 
 BL_ChatGeneration = (BL_ChatGeneration or 0)+1
-local BL77_Generation = BL_ChatGeneration
-local BL77_PreviousChat = Turbine.Chat.Received
+local BL78_Generation = BL_ChatGeneration
+local BL78_PreviousChat = Turbine.Chat.Received
 
-local BL77_xpat = "<Examine:IIDDID:0x0%x+:0x700(%x+)>%[(.-)%]<\\Examine>"
-local BL77_fpPat = "Your proficiency in Birding has increased to (%d+)."
+local BL78_xpat = "<Examine:IIDDID:0x0%x+:0x700(%x+)>%[(.-)%]<\\Examine>"
+local BL78_fpPat = "Your proficiency in Birding has increased to (%d+)."
 
-local function BL77_ChatHandler(sender,args)
-    if BL77_PreviousChat then BL77_PreviousChat(sender,args) end
-    if BL77_Generation~=BL_ChatGeneration then return end
+local function BL78_ChatHandler(sender,args)
+    if BL78_PreviousChat then BL78_PreviousChat(sender,args) end
+    if BL78_Generation~=BL_ChatGeneration then return end
 
     local msg = args.Message
     if not msg then return end
 
     if args.ChatType==Turbine.ChatType.Advancement then
-        local fp = msg:match(BL77_fpPat)
+        local fp = msg:match(BL78_fpPat)
         if not fp then
             local low = string.lower(msg)
             if low:find("bird",1,true) or low:find("ornith",1,true) or low:find("vogel",1,true) then
@@ -51,7 +82,7 @@ local function BL77_ChatHandler(sender,args)
 
     if args.ChatType~=Turbine.ChatType.SelfLoot then return end
 
-    local id,name = msg:match(BL77_xpat)
+    local id,name = msg:match(BL78_xpat)
     if not id then id,name = Dusk.Common.EII_ID(msg) end
     if not id then return end
     name = name or "?"
@@ -87,9 +118,9 @@ local function BL77_ChatHandler(sender,args)
     end
 end
 
-BL_PreviousChatHandler = BL77_PreviousChat
-BL_ChatHandler = BL77_ChatHandler
-Turbine.Chat.Received = BL77_ChatHandler
+BL_PreviousChatHandler = BL78_PreviousChat
+BL_ChatHandler = BL78_ChatHandler
+Turbine.Chat.Received = BL78_ChatHandler
 
 -- Revalidate a kit restored from an old save. BL_Window originally validated
 -- only a shortcut changed by the player after startup.
@@ -104,11 +135,11 @@ if BL_Totals and BL_Totals.kit and BL_window and BL_window.kit then
     end
 end
 
-local BL77_OldExecute = BL_Command.Execute
-local BL77_Zloc = "^%s*(.-)%s*:%s*(.-)%s*:%s*([%d%.,]+%s*[NS])%s*,%s*([%d%.,]+%s*[EWO])%s*$"
-local BL77_xlink = "<Examine:IIDDID:0x0000000000000000:0x700%s>[%s]<\\Examine>"
+local BL78_OldExecute = BL_Command.Execute
+local BL78_Zloc = "^%s*(.-)%s*:%s*(.-)%s*:%s*([%d%.,]+%s*[NS])%s*,%s*([%d%.,]+%s*[EWO])%s*$"
+local BL78_xlink = "<Examine:IIDDID:0x0000000000000000:0x700%s>[%s]<\\Examine>"
 
-local function BL77_LocValue(str,neg)
+local function BL78_LocValue(str,neg)
     local clean = str:gsub("%s",""):gsub(",",".")
     local dir = clean:sub(-1)
     local nbr = tonumber(clean:sub(1,-2))
@@ -117,7 +148,7 @@ local function BL77_LocValue(str,neg)
     return nbr
 end
 
-local function BL77_PrintList(list)
+local function BL78_PrintList(list)
     local ids,total = {},0
     if type(list)~="table" then list={} end
     for id,n in pairs(list) do
@@ -130,7 +161,7 @@ local function BL77_PrintList(list)
     end)
     for _,id in ipairs(ids) do
         local t,n=BL_ID[id],list[id]
-        BL_Print(string.format(BL77_xlink,id,t.ln or t.n)..": "..n)
+        BL_Print(string.format(BL78_xlink,id,t.ln or t.n)..": "..n)
         total=total+n
     end
     BL_Print((BL_Lang=="FR" and "Nombre total d’observations : " or "Total sighting count: ")..total)
@@ -141,7 +172,7 @@ function BL_Command:Execute(cmd,args)
     if cmd=="bll" and args=="list" then
         if BL_LocStr then
             BL_PrintH((BL_Lang=="FR" and "Oiseaux observés dans " or "Birds sighted in ")..(BL_Zone[BL_LocStr].ln or BL_Zone[BL_LocStr].z))
-            BL77_PrintList(BL_Locs[BL_LocStr])
+            BL78_PrintList(BL_Locs[BL_LocStr])
         else
             BL_PrintE(BL_Lang=="FR" and "Aucune zone sélectionnée" or "No zone selected")
         end
@@ -149,7 +180,7 @@ function BL_Command:Execute(cmd,args)
     end
     if args=="sight" then
         BL_PrintH(BL_Lang=="FR" and "Historique des observations :" or "Birding sighting record:")
-        BL77_PrintList(BL_Totals)
+        BL78_PrintList(BL_Totals)
         return
     end
     if args=="zones" then
@@ -166,10 +197,10 @@ function BL_Command:Execute(cmd,args)
     end
 
     -- Leave all non-location commands to the original implementation.
-    if cmd~="bll" or args=="zone" then return BL77_OldExecute(self,cmd,args) end
+    if cmd~="bll" or args=="zone" then return BL78_OldExecute(self,cmd,args) end
 
-    local reg,area,y,x = args:match(BL77_Zloc)
-    if not y then return BL77_OldExecute(self,cmd,args) end
+    local reg,area,y,x = args:match(BL78_Zloc)
+    if not y then return BL78_OldExecute(self,cmd,args) end
 
     reg = reg:gsub("^%s+",""):gsub("%s+$","")
     local r = BL_Region[reg]
@@ -177,7 +208,7 @@ function BL_Command:Execute(cmd,args)
     if not r then BL_PrintE((BL_Lang=="FR" and "Région inconnue : " or "Unknown region: ")..reg) return end
     if r>4 then BL_PrintE(BL_Lang=="FR" and "Aucun oiseau répertorié en Haradwaith." or "No birds found in Haradwaith.") return end
 
-    local y1,x1 = BL77_LocValue(y,"S"),BL77_LocValue(x,"W")
+    local y1,x1 = BL78_LocValue(y,"S"),BL78_LocValue(x,"W")
     if not y1 or not x1 then
         BL_PrintE((BL_Lang=="FR" and "Coordonnées invalides : " or "Invalid coordinates: ")..tostring(y)..", "..tostring(x))
         return
@@ -222,8 +253,8 @@ function BL_Command:Execute(cmd,args)
 end
 
 -- Invalidate our generation even when another plugin sits above our handler.
-local BL77_OldUnload = Plugins.BirdingLog.Unload
+local BL78_OldUnload = Plugins.BirdingLog.Unload
 Plugins.BirdingLog.Unload = function(sender,args)
-    if BL77_Generation==BL_ChatGeneration then BL_ChatGeneration=BL_ChatGeneration+1 end
-    return BL77_OldUnload(sender,args)
+    if BL78_Generation==BL_ChatGeneration then BL_ChatGeneration=BL_ChatGeneration+1 end
+    return BL78_OldUnload(sender,args)
 end
