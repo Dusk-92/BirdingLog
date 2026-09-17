@@ -7,7 +7,8 @@ import "Dusk.Common"
 
 BL_IconWindow = Turbine.UI.Window()
 BL_IconWindow:SetSize(36,36)
-BL_IconWindow:SetZOrder(1000)
+-- Normal UI layer: native LOTRO panels such as the world map can cover the icon.
+BL_IconWindow:SetZOrder(0)
 
 local sw, sh = Turbine.UI.Display.GetWidth(), Turbine.UI.Display.GetHeight()
 local defaultX = math.max(0, sw - 92)
