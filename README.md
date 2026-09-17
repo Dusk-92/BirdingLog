@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.8**
+- Version du fork : **1.3-FR7.9**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -17,10 +17,12 @@ Cette version conserve le fonctionnement original de Birding Log tout en amélio
 - détection des messages d'observation sur client FR ;
 - coordonnées françaises avec virgule décimale et `O` pour Ouest ;
 - récupération progressive des futurs noms localisés directement depuis le client LOTRO ;
+- cache séparé des noms localisés des récompenses/objets d'ornithologie ;
 - protections contre les doubles handlers de chat après reload ;
 - validation des anciennes sauvegardes et du kit restauré ;
 - gestion plus sûre des noms localisés identiques ;
-- détection de zone déterministe lorsque plusieurs rectangles se chevauchent.
+- détection de zone déterministe lorsque plusieurs rectangles se chevauchent ;
+- décodage PluginData durci sans exécuter le contenu des sauvegardes comme du code Lua.
 
 ## Installation
 
@@ -44,7 +46,7 @@ Dans LOTRO, charger l'addon depuis le gestionnaire de plugins.
 /bl             Afficher la maîtrise d'ornithologie
 /bl sight       Afficher les observations personnelles
 /bl zones       Afficher la progression par zone
-/bl fr          Relancer manuellement la récupération des noms FR
+/bl fr          Forcer une nouvelle récupération des noms FR
 /bl track       Activer/désactiver le suivi des oiseaux inconnus
 /blw            Ouvrir la fenêtre BirdingLog
 /bll zone       Lister les oiseaux de la zone sélectionnée
@@ -58,7 +60,11 @@ Le bouton **Détecter zone** utilise la commande LOTRO `;loc` et les coordonnée
 
 La base française est associée aux **ID internes LOTRO**, et non aux noms anglais. Les noms officiels connus sont préchargés dans `BL_FR.lua`.
 
-À partir de FR7.8, si une future mise à jour de `BL_Data.lua` introduit un oiseau sans nom français préchargé, BirdingLog autorise automatiquement une nouvelle tentative de récupération du nom depuis le client LOTRO. `/bl fr` reste disponible pour forcer cette opération.
+Depuis **FR7.9**, BirdingLog calcule une signature déterministe à partir des ID d'oiseaux (`BL_ID`) et des objets/récompenses (`BL_GID`). Si une future mise à jour ajoute ou retire des ID, une nouvelle tentative automatique de localisation est autorisée une fois pour cette nouvelle base.
+
+Un ID que le client LOTRO ne sait pas résoudre n'est donc plus retenté inutilement à chaque connexion. La commande `/bl fr` reste disponible pour forcer une nouvelle tentative manuelle à tout moment.
+
+Les noms localisés des récompenses et objets d'ornithologie appris dynamiquement sont conservés séparément dans `BL_GNames`.
 
 ## Sauvegardes
 
@@ -68,17 +74,26 @@ BirdingLog conserve notamment :
 - les observations par zone ;
 - les options de fenêtre ;
 - la position de l'icône ;
-- les noms localisés appris depuis LOTRO.
+- les noms localisés d'oiseaux appris depuis LOTRO ;
+- les noms localisés des récompenses/objets appris depuis LOTRO.
 
 Les anciennes données restent compatibles avec le fork.
 
+Sur les clients FR/DE, la bibliothèque historique `Dusk/Common` convertit les valeurs PluginData afin de contourner les problèmes de séparateur décimal. Depuis FR7.9, cette conversion n'utilise plus `loadstring()` : les nombres sont décodés avec `tonumber()` en acceptant point ou virgule, et les données invalides sont conservées sans faire planter le chargement.
+
 ## À propos de `Dusk/Common`
 
-BirdingLog et FishingLog utilisent actuellement la même bibliothèque historique `Dusk/Common`. Elle est volontairement conservée partagée dans cette version : la dupliquer naïvement ferait installer plusieurs wrappers globaux de `Turbine.PluginData.Load/Save` sur les clients FR/DE. Une éventuelle séparation devra donc être effectuée simultanément dans les addons concernés.
+BirdingLog et FishingLog utilisent actuellement la même bibliothèque historique `Dusk/Common`. Les deux dépôts conservent désormais **exactement la même version durcie** de cette bibliothèque afin d'éviter qu'une installation de l'un remplace `Common` par une version différente de l'autre.
+
+Elle reste volontairement partagée : la dupliquer naïvement ferait installer plusieurs wrappers globaux de `Turbine.PluginData.Load/Save` sur les clients FR/DE.
 
 ## Plugin Compendium
 
 Le fichier `.plugincompendium` de l'addon original utilisait l'identifiant LOTROInterface **1241**, qui appartient à la publication originale. Il n'est pas utilisé comme identité de ce fork afin d'éviter qu'un gestionnaire de mises à jour confonde la version Dusk avec la version officielle.
+
+## Historique
+
+Les changements du fork sont résumés dans `CHANGELOG.md`. `Dusk/BirdingLog/Updates.txt` conserve également l'historique historique de Birding Log.
 
 ## Crédits
 
