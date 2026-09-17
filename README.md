@@ -25,6 +25,7 @@ Cette version conserve le fonctionnement original de Birding Log tout en amélio
 - assainissement et bornage des options sensibles avant création de la fenêtre ;
 - neutralisation des compteurs non numériques issus de sauvegardes anciennes/corrompues ;
 - fenêtre restaurée maintenue dans les limites de la résolution actuelle ;
+- sauvegarde immédiate de la valeur d'échelle lors d'un changement dans les options ;
 - autosave périodique des observations et sauvegarde immédiate des changements importants ;
 - signalement d'un échec synchrone d'autosave avec nouvelle tentative ultérieure ;
 - vrai rafraîchissement manuel des noms appris dynamiquement avec `/bl fr`, différé si un probe est déjà en cours ;
@@ -102,7 +103,7 @@ Depuis **FR7.13**, cette validation contrôle aussi le résultat retourné par T
 
 Depuis **FR7.14**, un kit accepté mais encore non résolu est volontairement tenu hors de `BL_Totals` pendant la construction de la fenêtre afin d'éviter la validation historique trop agressive. Il est ensuite restauré avec `ShortcutChanged` temporairement désactivé, puis revalidé une seconde fois. Cela évite le faux message « Objet introuvable » et empêche une mauvaise catégorie apparue entre les deux contrôles d'être réintroduite.
 
-Les positions sauvegardées sont converties en coordonnées numériques valides puis bornées à l'écran actuel **avant** la création de la fenêtre. L'échelle est limitée à la plage utilisée par le panneau d'options (`0.5` à `2.0`). Une maîtrise non numérique est ignorée proprement.
+Les positions sauvegardées sont converties en coordonnées numériques valides puis bornées à l'écran actuel **avant** la création de la fenêtre. L'échelle est limitée à la plage utilisée par le panneau d'options (`0.5` à `2.0`). Une maîtrise non numérique est ignorée proprement. Depuis FR7.14, toute modification du curseur d'échelle est également sauvegardée immédiatement dans `PluginData` au lieu d'attendre l'unload du plugin.
 
 Les compteurs d'oiseaux et de zones non numériques sont ramenés à une valeur sûre avant toute addition, et une entrée de zone corrompue est recréée sous forme de table vide.
 
@@ -115,6 +116,8 @@ Sur les clients FR/DE, la bibliothèque historique `Dusk/Common` convertit les v
 ## À propos de `Dusk/Common`
 
 BirdingLog et FishingLog utilisent actuellement la même bibliothèque historique `Dusk/Common`. Les deux dépôts conservent désormais **exactement la même version durcie** de cette bibliothèque afin d'éviter qu'une installation de l'un remplace `Common` par une version différente de l'autre.
+
+`Dusk/Common/Options.lua` est également maintenu identique dans les deux dépôts. FR7.14 y ajoute la sauvegarde immédiate de l'échelle afin qu'une fermeture brutale de LOTRO ne fasse pas revenir l'ancien réglage.
 
 Elle reste volontairement partagée : la dupliquer naïvement ferait installer plusieurs wrappers globaux de `Turbine.PluginData.Load/Save` sur les clients FR/DE.
 
