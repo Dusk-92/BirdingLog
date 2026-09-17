@@ -11,6 +11,8 @@ L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Upda
 - `/bl fr` n'ignore plus silencieusement une demande manuelle lorsqu'un probe oiseaux est déjà en cours : le refresh est différé puis relancé à la fin de la passe active.
 - Une attente de sécurité bornée empêche un ancien état de probe incomplet de bloquer définitivement le refresh manuel.
 - Un échec synchrone d'autosave est désormais signalé une seule fois ; le compteur n'est pas remis à zéro et BirdingLog retente au changement suivant.
+- Le changement d'échelle de la fenêtre est sauvegardé immédiatement dans les options au lieu d'attendre l'unload du plugin.
+- `Dusk/Common/Options.lua` reste strictement synchronisé entre BirdingLog et FishingLog après ce changement partagé.
 - Le fichier `BL_Loader712.lua` reste le point d'entrée afin de ne pas empiler un nouveau loader.
 
 ## 1.3-FR7.13 — 17 septembre 2026
