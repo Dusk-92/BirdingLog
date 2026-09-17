@@ -7,9 +7,6 @@ import "Dusk.Common"
 
 local BL712_RawLoad = Turbine.PluginData.Load
 local BL712_ShortcutProbe = nil
-local BL712_OfficialBirdNames = {}
-local BL712_OfficialGIDNames = {}
-local BL712_OfficialSnapshotDone = false
 
 local function BL712_Clamp(value,minValue,maxValue)
     local n=tonumber(value)
@@ -17,21 +14,6 @@ local function BL712_Clamp(value,minValue,maxValue)
     if minValue and n<minValue then n=minValue end
     if maxValue and n>maxValue then n=maxValue end
     return n
-end
-
-local function BL712_SnapshotOfficialNames()
-    if BL712_OfficialSnapshotDone or BL_Lang~="FR" then return end
-    for id,t in pairs(BL_ID or {}) do
-        if type(t)=="table" and type(t.ln)=="string" and t.ln~="" then
-            BL712_OfficialBirdNames[id]=t.ln
-        end
-    end
-    for id,t in pairs(BL_GID or {}) do
-        if type(t)=="table" and type(t.ln)=="string" and t.ln~="" then
-            BL712_OfficialGIDNames[id]=t.ln
-        end
-    end
-    BL712_OfficialSnapshotDone=true
 end
 
 local function BL712_ValidateShortcutData(value)
@@ -69,17 +51,9 @@ end
 
 Turbine.PluginData.Load=function(scope,key,callback)
     local value=BL712_RawLoad(scope,key,callback)
-
-    -- BL_FR has already run by the time BL_Main asks for its first saved table.
-    -- Capture the embedded official names before learned caches can fill .ln.
-    if key=="BL_Options" or key=="BL_Names" then
-        BL712_SnapshotOfficialNames()
-    end
-
     if key=="BL_Options" then
         return BL712_PreClampOptions(value)
     end
-
     if key=="BL_Totals" and type(value)=="table" then
         value.kit=BL712_ValidateShortcutData(value.kit)
         value.wpn=BL712_ValidateShortcutData(value.wpn)
@@ -94,9 +68,10 @@ end)
 Turbine.PluginData.Load=BL712_RawLoad
 if not BL712_LoadOK then error(BL712_LoadError) end
 
--- /bl fr must really refresh names learned dynamically. Embedded BL_FR names
--- stay untouched. Dynamic names are hidden only long enough for FR7.11 to build
--- its probe queues, then restored immediately as a fallback if probing fails.
+-- /bl fr must really refresh names learned dynamically. The embedded BL_FR
+-- database normally never enters BL_Names/BL_GNames, so only cached names are
+-- temporarily hidden while FR7.11 builds its probe queues. They are restored
+-- immediately as a fallback; successful probes overwrite them asynchronously.
 local BL712_PreviousAutoLocalize=BL_AutoLocalize
 if type(BL712_PreviousAutoLocalize)=="function" then
     BL_AutoLocalize=function(force)
@@ -108,7 +83,7 @@ if type(BL712_PreviousAutoLocalize)=="function" then
 
         for id,t in pairs(BL_ID or {}) do
             local cached=BL_Names and BL_Names[id]
-            if not BL712_OfficialBirdNames[id] and type(cached)=="string" and cached~="" and
+            if type(cached)=="string" and cached~="" and
                type(t)=="table" and t.ln==cached then
                 restoreBirds[id]=cached
                 t.ln=nil
@@ -117,7 +92,7 @@ if type(BL712_PreviousAutoLocalize)=="function" then
 
         for id,t in pairs(BL_GID or {}) do
             local cached=BL_GNames and BL_GNames[id]
-            if not BL712_OfficialGIDNames[id] and type(cached)=="string" and cached~="" and
+            if type(cached)=="string" and cached~="" and
                type(t)=="table" and t.ln==cached then
                 restoreGIDs[id]=cached
                 t.ln=nil
@@ -143,10 +118,11 @@ if type(BL712_PreviousAutoLocalize)=="function" then
 end
 
 local BL712_SaveBusy=false
+local BL712_ObservationsSinceSave=0
 local function BL712_SaveRuntimeData()
-    if BL712_SaveBusy then return end
+    if BL712_SaveBusy then return false end
     BL712_SaveBusy=true
-    pcall(function()
+    local ok=pcall(function()
         if type(BL_Locs)=="table" then
             Turbine.PluginData.Save(Turbine.DataScope.Server,"BL_Locs",BL_Locs)
         end
@@ -161,6 +137,8 @@ local function BL712_SaveRuntimeData()
         end
     end)
     BL712_SaveBusy=false
+    if ok then BL712_ObservationsSinceSave=0 end
+    return ok
 end
 
 -- Persist manual UI additions/count edits immediately without rewriting the
@@ -196,14 +174,13 @@ if BL_window then
     BL712_WrapShortcut(BL_window.shield)
 end
 
--- Autosave every ten recognised observations, and immediately when proficiency
--- changes. Compare before/after values so unrelated SelfLoot messages are ignored.
+-- Autosave every ten recognised observations. Proficiency changes and newly
+-- learned dynamic names are rare and are persisted immediately.
 local BL712_BaseChat=Turbine.Chat.Received
 local BL712_BaseBLHandler=BL_ChatHandler
 local BL712_BaseBLPrevious=BL_PreviousChatHandler
 BL712_ChatGeneration=(BL712_ChatGeneration or 0)+1
 local BL712_Generation=BL712_ChatGeneration
-local BL712_ObservationsSinceSave=0
 local BL712_XPat="<Examine:IIDDID:0x0%x+:0x700(%x+)>%[(.-)%]<\\Examine>"
 
 local function BL712_MessageID(msg)
@@ -222,33 +199,40 @@ local function BL712_ChatHandler(sender,args)
     end
 
     local beforeFP=BL_Totals and BL_Totals.fp
-    local birdID
-    local beforeCount
+    local itemID,birdID,rewardID,beforeCount,beforeBirdName,beforeRewardName
     if args and args.ChatType==Turbine.ChatType.SelfLoot then
-        birdID=BL712_MessageID(args.Message)
-        if birdID and BL_ID and BL_ID[birdID] then
+        itemID=BL712_MessageID(args.Message)
+        if itemID and BL_ID and BL_ID[itemID] then
+            birdID=itemID
             beforeCount=tonumber(BL_Totals and BL_Totals[birdID]) or 0
-        else
-            birdID=nil
+            beforeBirdName=BL_Names and BL_Names[birdID]
+        elseif itemID and BL_GID and BL_GID[itemID] then
+            rewardID=itemID
+            beforeRewardName=BL_GNames and BL_GNames[rewardID]
         end
     end
 
     local result
     if BL712_BaseChat then result=BL712_BaseChat(sender,args) end
 
+    local learnedName=false
+    if birdID and BL_Names and BL_Names[birdID]~=beforeBirdName then learnedName=true end
+    if rewardID and BL_GNames and BL_GNames[rewardID]~=beforeRewardName then learnedName=true end
+
+    local afterFP=BL_Totals and BL_Totals.fp
+    local importantChange=learnedName or afterFP~=beforeFP
+    if importantChange then BL712_SaveRuntimeData() end
+
     if birdID then
         local afterCount=tonumber(BL_Totals and BL_Totals[birdID]) or 0
-        if afterCount>beforeCount then
+        if afterCount>beforeCount and not importantChange then
             BL712_ObservationsSinceSave=BL712_ObservationsSinceSave+1
             if BL712_ObservationsSinceSave>=10 then
                 BL712_SaveRuntimeData()
-                BL712_ObservationsSinceSave=0
             end
         end
     end
 
-    local afterFP=BL_Totals and BL_Totals.fp
-    if afterFP~=beforeFP then BL712_SaveRuntimeData() end
     return result
 end
 
