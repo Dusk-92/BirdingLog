@@ -1,3 +1,4 @@
+09/17/26 1.3-FR7.19	Show Birding proficiency level and highest reached title directly in the main window, with live refresh while visible.
 09/17/26 1.3-FR7.18	Put the BirdingLog launcher on the normal LOTRO UI layer so native panels such as the world map can cover it.
 09/17/26 1.3-FR7.17	Stop rejecting current Birding Kits through the obsolete category-104 check; accept any valid Item shortcut in the kit slot and preserve it across reloads.
 09/17/26 1.3-FR7.16	Consolidated runtime, callback-verified saves, recoverable shortcuts, serialized FR localization, cleaner unload/reload handling and automated repository audit.
