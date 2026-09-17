@@ -3,6 +3,15 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.19 — 17 septembre 2026
+
+- La fenêtre principale affiche désormais la maîtrise d’ornithologie directement sous son titre.
+- Le format FR est `Ornithologie : niveau X — Rang`, avec le meilleur rang atteint à partir de `BL_Title`.
+- Avant le premier niveau connu, la fenêtre affiche `Ornithologie : niveau inconnu`.
+- L’affichage est rafraîchi automatiquement tant que la fenêtre est visible ; un niveau gagné pendant qu’elle est fermée apparaît dès sa prochaine ouverture.
+- Aucun bouton ni Quickslot n’a été déplacé et la fenêtre conserve sa taille `340x275`.
+- Le CI vérifie désormais les protections cumulatives FR7.16+ au lieu de les limiter à une version exacte, ainsi que la présence de l’affichage de maîtrise FR7.19.
+
 ## 1.3-FR7.18 — 17 septembre 2026
 
 - L'icône flottante BirdingLog n'utilise plus `SetZOrder(1000)`.
