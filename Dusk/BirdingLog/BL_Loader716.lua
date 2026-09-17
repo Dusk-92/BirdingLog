@@ -1,6 +1,6 @@
--- BirdingLog FR7.16 consolidated loader.
+-- BirdingLog FR7.17 consolidated loader.
 -- One active entry point: preflight saved data, load the historical UI/core once,
--- then hand ownership to the FR7.16 runtime. No older compatibility loader is imported.
+-- then hand ownership to the consolidated runtime. No older compatibility loader is imported.
 
 import "Turbine.UI.Lotro"
 import "Dusk.Common"
@@ -112,8 +112,8 @@ local function SanitizeOptions(value)
     end
 
     -- BL_Main owns the historical probe. Hide its marker only while BL_Main loads,
-    -- so that old asynchronous controls never start. FR7.16 restores the marker
-    -- afterwards and owns localization from that point forward.
+    -- so that old asynchronous controls never start. The consolidated runtime
+    -- restores the marker afterwards and owns localization from that point forward.
     value.frProbeVersion=3
 
     if value.pos1 then
@@ -130,7 +130,7 @@ local function ProcessShortcutField(value,pending,field)
     local saved=value[field]
     local waiting=pending[field]
 
-    -- false is the explicit FR7.16 placeholder meaning "temporarily unavailable".
+    -- false is the explicit FR7.16+ placeholder meaning "temporarily unavailable".
     -- It distinguishes a pending shortcut from a slot the player deliberately
     -- cleared (nil), so an old shortcut can never resurrect after a manual clear.
     if saved==false then
@@ -265,7 +265,15 @@ if BL_Options then
     BL_Options.frProbeSignature=S.SavedProbeSignature
 end
 
+-- FR7.17: BL_BirdingKit=104 is a legacy category assumption that rejects the
+-- current Basic Birding Kit in LOTRO. Mark every already-restored kit to bypass
+-- that historical category check before Runtime716 performs its revalidation.
+if BL_Totals and type(BL_Totals.kit)=="string" and BL_Totals.kit~="" then
+    BL_Totals.kitBypass=true
+end
+
 local runtimeOK,runtimeError=pcall(function()
     import "Dusk.BirdingLog.BL_Runtime716"
+    import "Dusk.BirdingLog.BL_Runtime717"
 end)
 if not runtimeOK then error(runtimeError) end
