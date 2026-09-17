@@ -1,6 +1,6 @@
 -- BirdingLog FR7.17 kit compatibility override.
 -- LOTRO currently reports the Basic Birding Kit with an item category that does
--- not match the historical BL_BirdingKit=104 constant. FR7.17 therefore treats
+-- not match the historical category-104 assumption. FR7.17 therefore treats
 -- the kit slot like a normal Item Quickslot and never rejects a kit by category.
 
 import "Turbine.UI.Lotro"
