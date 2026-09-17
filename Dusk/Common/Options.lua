@@ -10,6 +10,12 @@ end
 
 local function SafeSave(Fname,Settings)
     if not Fname then return true end
+    if Fname=="BL_Options" and type(BL_SaveOptions)=="function" then
+        return BL_SaveOptions()
+    end
+    if Fname=="FL_Options" and type(FL_SaveOptions)=="function" then
+        return FL_SaveOptions()
+    end
     return pcall(Turbine.PluginData.Save,Turbine.DataScope.Server,Fname,Settings)
 end
 
