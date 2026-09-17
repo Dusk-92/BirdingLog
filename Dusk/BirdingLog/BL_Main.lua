@@ -165,9 +165,14 @@ BL_AutoLocalize(false)
 BL_PrintH(BL_VersionText..(BL_Lang=="FR" and ", données chargées." or ", data loaded."))
 
 
-local Chat = Turbine.Chat.Received
-Turbine.Chat.Received = function (sender,args)
-	if Chat then Chat(sender,args) end
+-- Keep a named chat handler so direct reloads do not stack duplicate wrappers.
+-- If another plugin wraps this handler afterwards, we leave that chain intact.
+if BL_ChatHandler and Turbine.Chat.Received == BL_ChatHandler and BL_PreviousChatHandler then
+    Turbine.Chat.Received = BL_PreviousChatHandler
+end
+BL_PreviousChatHandler = Turbine.Chat.Received
+BL_ChatHandler = function (sender,args)
+	if BL_PreviousChatHandler then BL_PreviousChatHandler(sender,args) end
 	local msg = args.Message
 	if not msg then return end
 	if args.ChatType==Turbine.ChatType.Advancement then
@@ -221,8 +226,7 @@ Turbine.Chat.Received = function (sender,args)
         end
 	end
 end
-
-local function distance(dy,dx) return math.sqrt(dy*dy+dx*dx) end
+Turbine.Chat.Received = BL_ChatHandler
 
 local function locV(str,neg)
     local clean = str:gsub("%s",""):gsub(",",".")
@@ -291,11 +295,22 @@ function BL_Command:Execute( cmd,args )
 			local y1,x1,ln = locV(y,'S'), locV(x,'W')
             if not y1 or not x1 then BL_PrintE((BL_Lang=="FR" and "Coordonnées invalides : " or "Invalid coordinates: ")..tostring(y)..", "..tostring(x)) return end
 			BL_LocStr = nil
-			local zc,zn
+			local zc,zn,bestScore,bestArea
 			for c,t in pairs(BL_Zone) do
 				local rg = r==t.r or (r==4 and t.r==3) -- KG and Gondor share birds
 				if rg and y1<t.n and y1>t.s and x1<t.e and x1>t.w then
-					zc = c; zn = t.z break end
+                    local h,w = t.n-t.s, t.e-t.w
+                    local yMargin = math.min(t.n-y1, y1-t.s) / h
+                    local xMargin = math.min(t.e-x1, x1-t.w) / w
+                    local score = math.min(yMargin,xMargin)
+                    local area = h*w
+                    -- Prefer the rectangle where the player is furthest from an edge.
+                    -- Deterministic tie-breakers avoid pairs() order changing the result.
+                    if not bestScore or score>bestScore or
+                       (score==bestScore and (area<bestArea or (area==bestArea and c<zc))) then
+                        zc,zn,bestScore,bestArea = c,t.z,score,area
+                    end
+                end
 			end
 			if zn then 
 				BL_Print((BL_Lang=="FR" and "Zone : " or "Zone: ")..(BL_Zone[zc].ln or zn))
@@ -416,10 +431,18 @@ Plugins.BirdingLog.Open = function(sender,args)
 end
 
 Plugins.BirdingLog.Unload = function(sender,args)
+    if BL_window and BL_Options then
+        local x,y = BL_window:GetPosition()
+        BL_Options.pos1 = { x=math.floor(x+0.5), y=math.floor(y+0.5) }
+    end
+    if BL_SaveIconPosition then BL_SaveIconPosition() end
     Turbine.PluginData.Save(Turbine.DataScope.Server,"BL_Options",BL_Options)
     Turbine.PluginData.Save(Turbine.DataScope.Server,"BL_Locs",BL_Locs)
     Turbine.PluginData.Save(Turbine.DataScope.Server,"BL_Names",BL_Names)
     Turbine.PluginData.Save(Turbine.DataScope.Character,"BL_Totals",BL_Totals)
+    if Turbine.Chat.Received == BL_ChatHandler then
+        Turbine.Chat.Received = BL_PreviousChatHandler
+    end
     BL_Print(BL_Lang=="FR" and "Carnet d’ornithologie enregistré." or "Birding record saved.")
 end
 
