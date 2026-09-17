@@ -3,6 +3,16 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.17 — 17 septembre 2026
+
+- Le slot **Kit d’ornithologie** n'utilise plus `BL_BirdingKit=104` ni `GetCategory()` pour décider si un objet est valide.
+- Le test en jeu avec le **Kit d’ornithologie de base** a confirmé que la catégorie historique `104` ne correspond plus au comportement actuel de LOTRO et provoquait un faux rejet.
+- FR7.17 accepte désormais tout raccourci `ShortcutType.Item` possédant des données valides dans le slot Kit, exactement comme les emplacements Arme et 2e slot.
+- Les kits déjà sauvegardés sont marqués avant le chargement de `BL_Runtime716` afin que l'ancienne revalidation par catégorie ne puisse pas les supprimer au reload.
+- Le handler du slot Kit est remplacé après le runtime consolidé par `BL_Runtime717.lua`; il conserve l'autosave immédiat et le nettoyage des raccourcis pending.
+- L'audit automatique vérifie désormais que `BL_Runtime717.lua` ne contient ni `GetCategory()` ni `BL_BirdingKit`, afin d'empêcher le retour de cette régression.
+- Aucun changement n'est apporté aux oiseaux, zones, traductions FR, armes ou second emplacement.
+
 ## 1.3-FR7.16 — 17 septembre 2026
 
 - Nouveau point d'entrée actif `BL_Loader716.lua` : les anciens `BL_Loader.lua` et `BL_Loader712.lua` ne sont plus empilés dans le chemin d'exécution.
