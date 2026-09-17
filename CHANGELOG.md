@@ -3,6 +3,17 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.10 — 17 septembre 2026
+
+- Les récompenses connues de `BL_GID` sont désormais reconnues et leur nom FR peut être appris même lorsque `/bl track` est désactivé.
+- Les compteurs d'oiseaux et de zones issus d'anciennes sauvegardes sont normalisés avant toute opération arithmétique ; une valeur non numérique ne peut plus provoquer une erreur lors d'un `+1`.
+- Les entrées de zone corrompues qui ne sont plus des tables sont recréées proprement.
+- La signature de localisation FR n'est plus enregistrée au lancement des probes : elle n'est validée qu'après la fin effective du probe oiseaux et du probe récompenses.
+- Si le plugin est fermé ou si un probe n'aboutit pas avant validation, la signature reste ancienne et la passe sera retentée au chargement suivant.
+- Le préfixe de signature passe à `BL710`, ce qui invalide proprement l'ancienne signature FR7.9.
+- Le cache appris `BL_Names` n'est plus appliqué aux clients EN/DE ; il reste réservé au client FR afin d'éviter une contamination de langue.
+- Les nouveaux noms appris depuis le chat ne sont persistés dans `BL_Names` / `BL_GNames` que sur client FR.
+
 ## 1.3-FR7.9 — 17 septembre 2026
 
 - Remplacement du déclenchement FR basé uniquement sur `frProbeVersion` par une **signature déterministe de la base d'ID**.
