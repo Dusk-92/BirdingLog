@@ -1,3 +1,5 @@
+09/17/26 1.3-FR7.8	Future-proof FR localization probing, fork metadata cleanup, audit hardening retained.
+09/17/26 1.3-FR7.7	Re-audit hardening: chat anti-duplicate generation guard, safe lists, restored kit validation and deterministic zones.
 09/16/26 1.3-FR1	French-client compatibility: language-neutral loot tracking, localized advancement parsing, flexible coordinates and FR UI.
 Version updates of the BirdingLog plugin:
 05/24/26 1.3	Added menu to add a bird sighting
