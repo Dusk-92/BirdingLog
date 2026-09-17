@@ -1,12 +1,14 @@
--- BirdingLog FR7.12 compatibility patch.
--- Loaded before FR7.11 so legacy shortcut data and window coordinates can be
--- validated before BL_Main creates any Turbine UI controls.
+-- BirdingLog FR7.13 compatibility patch.
+-- File name kept as BL_Loader712 to avoid another loader layer. Loaded before
+-- FR7.11 so legacy shortcut data and window coordinates can be validated before
+-- BL_Main creates any Turbine UI controls.
 
 import "Turbine.UI.Lotro"
 import "Dusk.Common"
 
 local BL712_RawLoad = Turbine.PluginData.Load
 local BL712_ShortcutProbe = nil
+local BL713_UnresolvedKitData = nil
 
 local function BL712_Clamp(value,minValue,maxValue)
     local n=tonumber(value)
@@ -16,19 +18,49 @@ local function BL712_Clamp(value,minValue,maxValue)
     return n
 end
 
-local function BL712_ValidateShortcutData(value)
-    if type(value)~="string" or value=="" then return nil end
-    local ok=pcall(function()
+-- Validate not only thrown errors but also Turbine's silent shortcut rejection.
+-- For the birding kit, a shortcut that Turbine accepts but cannot resolve yet is
+-- preserved; only a resolved item with the wrong category is rejected.
+local function BL713_ValidateShortcutData(value,expectedCategory)
+    if type(value)~="string" or value=="" then return nil,false end
+
+    local ok,accepted,unresolved=pcall(function()
         if not BL712_ShortcutProbe then
             BL712_ShortcutProbe=Turbine.UI.Lotro.Quickslot()
             BL712_ShortcutProbe:SetSize(1,1)
             BL712_ShortcutProbe:SetVisible(false)
         end
+
+        BL712_ShortcutProbe:SetShortcut(Turbine.UI.Lotro.Shortcut())
         local shortcut=Turbine.UI.Lotro.Shortcut(Turbine.UI.Lotro.ShortcutType.Item,value)
         BL712_ShortcutProbe:SetShortcut(shortcut)
+
+        local resolved=BL712_ShortcutProbe:GetShortcut()
+        if not resolved or resolved:GetType()~=Turbine.UI.Lotro.ShortcutType.Item then
+            return false,false
+        end
+
+        local resolvedData=resolved:GetData()
+        if type(resolvedData)~="string" or resolvedData=="" or resolvedData~=value then
+            return false,false
+        end
+
+        if expectedCategory~=nil then
+            local item=resolved:GetItem()
+            local info=item and item:GetItemInfo()
+            if not info then
+                return true,true
+            end
+            if info:GetCategory()~=expectedCategory then
+                return false,false
+            end
+        end
+
+        return true,false
     end)
-    if ok then return value end
-    return nil
+
+    if not ok or not accepted then return nil,false end
+    return value,unresolved==true
 end
 
 local function BL712_PreClampOptions(value)
@@ -55,9 +87,11 @@ Turbine.PluginData.Load=function(scope,key,callback)
         return BL712_PreClampOptions(value)
     end
     if key=="BL_Totals" and type(value)=="table" then
-        value.kit=BL712_ValidateShortcutData(value.kit)
-        value.wpn=BL712_ValidateShortcutData(value.wpn)
-        value.shl=BL712_ValidateShortcutData(value.shl)
+        local kit,kitUnresolved=BL713_ValidateShortcutData(value.kit,BL_BirdingKit)
+        value.kit=kit
+        BL713_UnresolvedKitData=(kit and kitUnresolved) and kit or nil
+        value.wpn=BL713_ValidateShortcutData(value.wpn)
+        value.shl=BL713_ValidateShortcutData(value.shl)
     end
     return value
 end
@@ -67,6 +101,19 @@ local BL712_LoadOK,BL712_LoadError=pcall(function()
 end)
 Turbine.PluginData.Load=BL712_RawLoad
 if not BL712_LoadOK then error(BL712_LoadError) end
+
+-- FR7.11 historically cleared a kit when GetItemInfo() was temporarily nil.
+-- Restore only a shortcut that our pre-load probe accepted but could not resolve.
+-- Resolved wrong-category items never reach this path.
+if BL713_UnresolvedKitData and BL_Totals and not BL_Totals.kit and BL_window and BL_window.kit then
+    local restored=pcall(function()
+        local shortcut=Turbine.UI.Lotro.Shortcut(Turbine.UI.Lotro.ShortcutType.Item,BL713_UnresolvedKitData)
+        BL_window.kit:SetShortcut(shortcut)
+    end)
+    if restored then
+        BL_Totals.kit=BL713_UnresolvedKitData
+    end
+end
 
 -- /bl fr must really refresh names learned dynamically. The embedded BL_FR
 -- database normally never enters BL_Names/BL_GNames, so only cached names are
