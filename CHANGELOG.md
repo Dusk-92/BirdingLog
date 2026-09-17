@@ -3,6 +3,16 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.14 — 17 septembre 2026
+
+- Un kit accepté par Turbine mais temporairement non résolu est maintenant retiré de `BL_Totals` pendant la construction de l'interface, puis restauré silencieusement une fois FR7.11 chargé.
+- La restauration temporaire désactive `ShortcutChanged` afin d'éviter le faux message « Objet introuvable » au chargement.
+- Le kit est revalidé une seconde fois avant restauration : s'il s'est résolu entre-temps avec une mauvaise catégorie, il reste rejeté.
+- `/bl fr` n'ignore plus silencieusement une demande manuelle lorsqu'un probe oiseaux est déjà en cours : le refresh est différé puis relancé à la fin de la passe active.
+- Une attente de sécurité bornée empêche un ancien état de probe incomplet de bloquer définitivement le refresh manuel.
+- Un échec synchrone d'autosave est désormais signalé une seule fois ; le compteur n'est pas remis à zéro et BirdingLog retente au changement suivant.
+- Le fichier `BL_Loader712.lua` reste le point d'entrée afin de ne pas empiler un nouveau loader.
+
 ## 1.3-FR7.13 — 17 septembre 2026
 
 - Le validateur de raccourcis ne se contente plus de vérifier qu'aucune exception Lua n'est levée : il contrôle aussi que Turbine restitue réellement un `ShortcutType.Item` avec les mêmes données sauvegardées.
