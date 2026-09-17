@@ -23,8 +23,9 @@ if not BL79_LoadOK then error(BL79_LoadError) end
 BL_GNames = Turbine.PluginData.Load(Turbine.DataScope.Server,"BL_GNames")
 if type(BL_GNames)~="table" then BL_GNames={} end
 for id,name in pairs(BL_GNames) do
-    if BL_GID and BL_GID[id] and type(name)=="string" and name~="" then
-        BL_GID[id].ln=name
+    local t=BL_GID and BL_GID[id]
+    if t and (not t.ln or t.ln=="") and type(name)=="string" and name~="" then
+        t.ln=name
     end
 end
 
