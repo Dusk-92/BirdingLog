@@ -3,6 +3,14 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.20 — 17 septembre 2026
+
+- La fenêtre principale passe de `340x275` à `360x295` pour mieux respirer autour de la ligne de maîtrise ajoutée en FR7.19.
+- Les blocs **Kit / Observer** et **Arme / 2e slot** sont légèrement descendus et davantage espacés horizontalement.
+- Les boutons de zone, listes et totaux sont redistribués sur la largeur supplémentaire, avec des boutons de `135 px` de large.
+- La ligne **Ajouter** est descendue et son menu est élargi à `220 px`.
+- La logique de maîtrise, les Quickslots, commandes, données et sauvegardes restent inchangés.
+
 ## 1.3-FR7.19 — 17 septembre 2026
 
 - La fenêtre principale affiche désormais la maîtrise d’ornithologie directement sous son titre.
