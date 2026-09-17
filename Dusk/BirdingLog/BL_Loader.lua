@@ -1,14 +1,60 @@
--- BirdingLog FR7.10 runtime hardening layer.
+-- BirdingLog FR7.11 runtime hardening layer.
 -- Keeps the original BL_Main intact while fixing audited edge cases safely.
 
 import "Dusk.Common"
 
--- Validate BL_Options before BL_Main reads it. The temporary wrapper is restored
--- even if BL_Main itself throws, so no other plugin inherits our guard.
+-- Sanitize the save fields BL_Main/BL_Window can consume during their own import.
+-- This must happen before BL_Main creates the window and options panel.
+local function BL711_Number(value,minValue,maxValue)
+    local n=tonumber(value)
+    if not n then return nil end
+    if minValue and n<minValue then n=minValue end
+    if maxValue and n>maxValue then n=maxValue end
+    return n
+end
+
+local function BL711_Point(value)
+    if type(value)~="table" then return nil end
+    local x,y=tonumber(value.x),tonumber(value.y)
+    if not x or not y then return nil end
+    return {x=x,y=y}
+end
+
+local function BL711_SanitizeOptions(value)
+    if type(value)~="table" then value={} end
+    value.pos1=BL711_Point(value.pos1)
+    value.pos2=BL711_Point(value.pos2)
+    value.iconPos=BL711_Point(value.iconPos)
+    if value.scale~=nil then value.scale=BL711_Number(value.scale,0.5,2.0) end
+    if value.frProbeVersion~=nil then value.frProbeVersion=tonumber(value.frProbeVersion) end
+    if value.frProbeSignature~=nil and type(value.frProbeSignature)~="string" then
+        value.frProbeSignature=nil
+    end
+    return value
+end
+
+local function BL711_SanitizeShortcut(value)
+    if type(value)=="string" and value~="" then return value end
+    return nil
+end
+
+local function BL711_SanitizeTotals(value)
+    if type(value)~="table" then return {} end
+    local fp=tonumber(value.fp)
+    value.fp=(fp and fp>=0) and fp or nil
+    value.kit=BL711_SanitizeShortcut(value.kit)
+    value.wpn=BL711_SanitizeShortcut(value.wpn)
+    value.shl=BL711_SanitizeShortcut(value.shl)
+    return value
+end
+
+-- Validate sensitive save data before BL_Main reads it. The temporary wrapper is
+-- restored even if BL_Main itself throws, so no other plugin inherits our guard.
 local BL710_RawLoad = Turbine.PluginData.Load
 Turbine.PluginData.Load = function(scope,key,callback)
     local value = BL710_RawLoad(scope,key,callback)
-    if key=="BL_Options" and type(value)~="table" then return {} end
+    if key=="BL_Options" then return BL711_SanitizeOptions(value) end
+    if key=="BL_Totals" then return BL711_SanitizeTotals(value) end
     return value
 end
 
@@ -26,6 +72,8 @@ local function BL710_SafeCount(value)
 end
 
 if type(BL_Totals)~="table" then BL_Totals={} end
+local fp=tonumber(BL_Totals.fp)
+BL_Totals.fp=(fp and fp>=0) and fp or nil
 for id in pairs(BL_ID or {}) do
     if BL_Totals[id]~=nil then BL_Totals[id]=BL710_SafeCount(BL_Totals[id]) end
 end
@@ -41,6 +89,21 @@ for zoneCode,loc in pairs(BL_Locs) do
             end
         end
     end
+end
+
+-- Keep a restored window reachable after resolution/monitor changes.
+if BL_window then
+    local x,y=BL_window:GetPosition()
+    local sw,sh=Turbine.UI.Display.GetWidth(),Turbine.UI.Display.GetHeight()
+    local scale=(BL_Options and tonumber(BL_Options.scale)) or 1
+    local width=math.floor((BL_window:GetWidth() or 0)*scale+0.5)
+    local height=math.floor((BL_window:GetHeight() or 0)*scale+0.5)
+    local maxX=math.max(0,sw-width)
+    local maxY=math.max(0,sh-height)
+    x=math.max(0,math.min(tonumber(x) or 0,maxX))
+    y=math.max(0,math.min(tonumber(y) or 0,maxY))
+    BL_window:SetPosition(x,y)
+    if BL_Options then BL_Options.pos1={x=x,y=y} end
 end
 
 -- BL_Names is a French learned-name cache. If the same saved data is loaded on
@@ -69,7 +132,7 @@ if BL_Lang=="FR" then
 end
 
 -- Build a deterministic signature from the IDs in the current bird/reward DB.
--- The FR7.10 prefix intentionally invalidates FR7.9's early-commit signature.
+-- The BL710 prefix remains valid because FR7.11 does not change localization IDs.
 local function BL710_LocalizationSignature()
     local ids={}
     for id in pairs(BL_ID or {}) do table.insert(ids,"B:"..tostring(id)) end
@@ -250,7 +313,7 @@ local function BL710_ChatHandler(sender,args)
                 fp=msg:match("(%d+)")
             end
         end
-        if fp then BL_Totals.fp=fp return end
+        if fp then BL_Totals.fp=tonumber(fp) return end
     end
 
     if args.ChatType~=Turbine.ChatType.SelfLoot then return end
