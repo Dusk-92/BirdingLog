@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.18**
+- Version du fork : **1.3-FR7.19**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -21,6 +21,7 @@ Cette version conserve l'interface et les données historiques de Birding Log to
 - récupération automatique d'un raccourci temporairement indisponible ;
 - slot Kit compatible avec les kits LOTRO actuels sans dépendre de l'ancienne catégorie `104` ;
 - icône flottante sur la couche UI normale afin que la carte et les panneaux natifs LOTRO puissent passer devant ;
+- niveau d'ornithologie et meilleur rang atteint affichés directement dans la fenêtre principale ;
 - assainissement des anciennes sauvegardes avant création de l'interface ;
 - autosave périodique et sauvegardes immédiates des changements importants ;
 - sauvegardes runtime vérifiées avec le callback réel de `PluginData.Save` ;
@@ -83,6 +84,8 @@ Le runtime FR7.16 possède un seul propriétaire pour :
 **FR7.17** ajoute une petite surcouche `BL_Runtime717.lua` uniquement pour le slot **Kit**. Elle ne remplace pas le runtime consolidé : elle neutralise spécifiquement l'ancienne hypothèse `BL_BirdingKit=104`, qui rejette aujourd'hui le véritable Kit d'ornithologie de base de LOTRO.
 
 **FR7.18** aligne l'icône flottante sur TravelRef et LOTRO Events : `BL_IconWindow` utilise désormais `SetZOrder(0)`. La carte et les autres panneaux natifs LOTRO peuvent donc la recouvrir normalement.
+
+**FR7.19** ajoute dans la fenêtre principale une ligne de maîtrise du type `Ornithologie : niveau 28 — Bird-brained`. Le meilleur rang atteint est calculé depuis les paliers `BL_Title`. Tant que la fenêtre est visible, l'affichage est rafraîchi automatiquement si la maîtrise change ; si elle était fermée au moment du gain, la nouvelle valeur apparaît dès sa prochaine ouverture.
 
 ## Données françaises et localisation dynamique
 
@@ -176,6 +179,8 @@ Le dépôt contient `.github/workflows/audit.yml` et `tools/audit_repo.py`.
 - exige une traduction FR intégrée pour chaque oiseau et objet actuel ;
 - vérifie les protections essentielles du runtime consolidé ;
 - vérifie que `BL_Runtime717.lua` n'utilise ni `GetCategory()` ni `BL_BirdingKit` pour valider le kit ;
+- vérifie que l'icône reste sur `SetZOrder(0)` depuis FR7.18 ;
+- vérifie la présence de l'affichage dynamique de maîtrise depuis FR7.19 ;
 - bloque le retour de `loadstring()`.
 
 Cela ne remplace pas un test dans le moteur Turbine de LOTRO, mais attrape automatiquement une grande partie des régressions structurelles avant publication.
