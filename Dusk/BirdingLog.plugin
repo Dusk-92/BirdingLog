@@ -3,9 +3,9 @@
   <Information>
 	<Name>BirdingLog</Name>
 	<Author>David Down</Author>
-	<Version>1.3-FR7.3</Version>
+	<Version>1.3-FR7.4</Version>
 	<Image>Dusk/BirdingLog/Bird.tga</Image>
-	<Description>FR7.3 : 470/470 oiseaux FR officiels, correction du bouton Détecter zone sans parentage Quickslot.</Description>
+	<Description>FR7.4 : bouton Détecter zone cliquable sur toute la barre, avec masque du débordement visuel de l’alias.</Description>
 	<website>http://www.lotrointerface.com/downloads/info1241</website>
   </Information>
   <Package>Dusk.BirdingLog.BL_Main</Package>
