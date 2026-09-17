@@ -3,6 +3,17 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.11 — 17 septembre 2026
+
+- `BL_Options` est désormais assaini **avant** que `BL_Main` crée la fenêtre et le panneau d'options.
+- Les positions `pos1`, `pos2` et `iconPos` invalides sont ignorées au lieu d'être transmises aux contrôles Turbine.
+- `scale` est converti en nombre et borné entre `0.5` et `2.0` avant toute multiplication ou appel à `SetScale()`.
+- `BL_Totals.fp` est validé comme nombre positif ou nul ; une valeur corrompue ne peut plus faire échouer `/bl`.
+- Les raccourcis sauvegardés `kit`, `wpn` et `shl` sont ignorés s'ils ne sont pas des chaînes exploitables.
+- Les compteurs d'oiseaux et de zones conservent la seconde validation post-chargement introduite en FR7.10.
+- La fenêtre principale restaurée est re-bornée à la résolution actuelle afin qu'elle ne puisse pas rester hors écran après un changement de moniteur ou de résolution.
+- La signature de localisation reste `BL710` : FR7.11 ne modifie ni `BL_ID` ni `BL_GID`, donc aucune nouvelle passe FR inutile n'est déclenchée.
+
 ## 1.3-FR7.10 — 17 septembre 2026
 
 - Les récompenses connues de `BL_GID` sont désormais reconnues et leur nom FR peut être appris même lorsque `/bl track` est désactivé.
