@@ -133,20 +133,20 @@ function BL_Window:Constructor()
 		BL_Totals.shl = BL_Shortcut(sender,BL_Lang=="FR" and "2e emplacement" or "2nd")
 	end
 
-	-- Create a clickable Alias covering the location button.
-	-- LOTRO must receive the click through a Quickslot Alias. Put the visual
-	-- LOTRO button above it with mouse input disabled so the Alias text/icon is
-	-- fully hidden while the whole button remains clickable.
+	-- Keep the Alias Quickslot and the visual LOTRO button as siblings.
+	-- The slot is inset so its own Alias rendering cannot leak around the skin.
 	local slot = Turbine.UI.Lotro.Quickslot()
 	slot:SetParent( self )
-    slot:SetPosition( 30,140 )
-    slot:SetSize( 125,20 )
+    slot:SetPosition( 32,142 )
+    slot:SetSize( 121,16 )
+    slot:SetOpacity( 0 )
+    slot:SetZOrder( 1 )
     slot:SetShortcut(Turbine.UI.Lotro.Shortcut( Alias,"/bll "..BL_Loc ))
     slot:SetAllowDrop( false )
 
-	self.locButton = self:AddField(Button, UI.setzone, {x=0,y=0}, {x=125,y=20} )
-    self.locButton:SetParent( slot )
+	self.locButton = self:AddField(Button, UI.setzone, {x=30,y=140}, {x=125,y=20} )
     self.locButton:SetMouseVisible( false )
+    self.locButton:SetZOrder( 2 )
 
 	-- Create a Zone menu button
 	self.zoneMenu = self:AddField(DropMenu, "", {x=175,y=140}, {x=135,y=20} )
