@@ -30,7 +30,7 @@ if Turbine.Shell.IsCommand("aide") or
         local value = tonumber(text)
         if value ~= nil then return value end
 
-        value = tonumber((string.gsub(text, "\%.", ",")))
+        value = tonumber((string.gsub(text, "\u0025.", ",")))
         if value ~= nil then return value end
 
         -- Corrupt/unknown numeric data is kept as text rather than throwing.
