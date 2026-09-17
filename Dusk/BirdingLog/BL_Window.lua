@@ -3,7 +3,6 @@
 
 import "Turbine.UI.Lotro"
 import "Dusk.Common.DropMenu"
-import "Dusk.Common.ToolTip"
 
 local labelFont = Turbine.UI.Lotro.Font.Verdana14
 local foreColor = Turbine.UI.Color( 0.9, 0.9, 0 )
@@ -13,7 +12,6 @@ local greyColor = Turbine.UI.Color( 0.1, 0.1, 0.1 )
 local Button = Turbine.UI.Lotro.Button
 local Label = Turbine.UI.Label
 local TextBox = Turbine.UI.TextBox
-local CheckBox = Turbine.UI.Lotro.CheckBox
 local DropMenu = Dusk.Common.DropMenu
 local Item = Turbine.UI.Lotro.ShortcutType.Item
 local Hobby = Turbine.UI.Lotro.ShortcutType.Hobby
@@ -51,7 +49,7 @@ function BL_Window:AddField(control, text, pos, size)
 	return field
 end
 
-function BL_Shortcut(sender,name,iname)
+function BL_Shortcut(sender,name,iname,icat)
 	local shortcut = sender:GetShortcut()
 	local itemType = shortcut:GetType()
 	if itemType==0 then return end
@@ -64,6 +62,16 @@ function BL_Shortcut(sender,name,iname)
 	end
 	local Item = shortcut:GetItem()
 	if not Item then BL_PrintE(BL_Lang=="FR" and "Objet introuvable." or "Item is null.") return end
+    if sender:IsShiftKeyDown() then iname=nil; icat=nil end
+    if icat then
+        local info = Item:GetItemInfo()
+        local category = info and info:GetCategory()
+        if category ~= icat then
+            BL_PrintE(BL_Lang=="FR" and (Item:GetName().." n’est pas un kit d’ornithologie valide.") or (Item:GetName().." is not a valid Birding Kit."))
+            sender:SetShortcut(Blank)
+            return
+        end
+    end
 	if iname and Item:GetName():sub(-#iname)~=iname then
 		BL_PrintE(BL_Lang=="FR" and (Item:GetName().." n’est pas un objet valide pour cet emplacement.") or (Item:GetName().." is not a "..iname))
 		sender:SetShortcut(Blank)
@@ -98,7 +106,7 @@ function BL_Window:Constructor()
 	if BL_Totals.kit then self.kit:SetShortcut( Shortcut(Item,BL_Totals.kit) ) 
 	else self.kit:SetBackground("Dusk/BirdingLog/Kit.tga") end
 	self.kit.ShortcutChanged = function( sender, args )
-		BL_Totals.kit = BL_Shortcut(sender,BL_Lang=="FR" and "Kit d’ornithologie" or "Birding Kit")
+		BL_Totals.kit = BL_Shortcut(sender,BL_Lang=="FR" and "Kit d’ornithologie" or "Birding Kit",nil,BL_BirdingKit)
 	end
 
 	-- Create a birding label
