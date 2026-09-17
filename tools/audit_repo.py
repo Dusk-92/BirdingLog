@@ -33,6 +33,7 @@ updates = read("Dusk/BirdingLog/Updates.txt")
 changelog = read("CHANGELOG.md")
 loader716 = read("Dusk/BirdingLog/BL_Loader716.lua")
 runtime716 = read("Dusk/BirdingLog/BL_Runtime716.lua")
+runtime717 = read("Dusk/BirdingLog/BL_Runtime717.lua")
 data_en = active_lines(read("Dusk/BirdingLog/BL_Data.lua"))
 data_de = active_lines(read("Dusk/BirdingLog/BL_Data_DE.lua"))
 data_fr = active_lines(read("Dusk/BirdingLog/BL_FR.lua"))
@@ -53,10 +54,12 @@ require(f"## {version} " in changelog or f"## {version} —" in changelog,
 package_path = ROOT / (package.replace(".", "/") + ".lua") if package else None
 require(bool(package_path and package_path.exists()), f"plugin package target does not exist: {package}")
 
-# FR7.16 must be the consolidated path, never one of the old compatibility stacks.
-if version.endswith("FR7.16"):
+# FR7.16+ keeps BL_Loader716 as the single plugin entry point. Later runtime
+# compatibility fixes may be imported from that loader, but the old loader stack
+# must never become active again.
+if version.endswith("FR7.16") or version.endswith("FR7.17"):
     require(package == "Dusk.BirdingLog.BL_Loader716",
-            "FR7.16 must use BL_Loader716 as its only plugin entry point")
+            "FR7.16+ must use BL_Loader716 as its only plugin entry point")
 
 require('import "Dusk.BirdingLog.BL_Main"' in loader716,
         "BL_Loader716 must import BL_Main directly")
@@ -83,6 +86,16 @@ for needle, description in [
 
 require("GIDFrames" not in runtime716,
         "FR7.16 must not reintroduce frame-count localization busy estimation")
+
+if version.endswith("FR7.17"):
+    require('import "Dusk.BirdingLog.BL_Runtime717"' in loader716,
+            "FR7.17 must import BL_Runtime717 after the consolidated runtime")
+    require('BL_Totals.kitBypass=true' in loader716,
+            "FR7.17 must bypass the legacy category check for restored kits before Runtime716")
+    require("GetCategory(" not in runtime717 and "BL_BirdingKit" not in runtime717,
+            "FR7.17 kit runtime must not validate kits through the legacy category constant")
+    require("ShortcutType.Item" in runtime717 and "BL_SaveRuntimeData" in runtime717,
+            "FR7.17 kit runtime lost item validation or immediate persistence")
 
 # Security regression guard: PluginData decoding must never execute save text.
 for lua_path in ROOT.rglob("*.lua"):
