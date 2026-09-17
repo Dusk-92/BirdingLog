@@ -49,6 +49,35 @@ function BL_Window:AddField(control, text, pos, size)
 	return field
 end
 
+local function BL_ProficiencyText()
+	local fp = tonumber(BL_Totals and BL_Totals.fp)
+	if not fp then
+		return BL_Lang=="FR" and "Ornithologie : niveau inconnu" or "Birding: unknown level"
+	end
+
+	local bestLevel = -1
+	local bestTitle = nil
+	for level,title in pairs(BL_Title or {}) do
+		local n = tonumber(level)
+		if n and fp>=n and n>bestLevel then
+			bestLevel = n
+			bestTitle = title
+		end
+	end
+
+	local text = (BL_Lang=="FR" and "Ornithologie : niveau " or "Birding: level ")..tostring(math.floor(fp))
+	if type(bestTitle)=="string" and bestTitle~="" then
+		text = text.." — "..bestTitle
+	end
+	return text
+end
+
+function BL_Window:RefreshProficiency()
+	if not self.proficiency then return end
+	self.proficiency:SetText(BL_ProficiencyText())
+	self._lastProficiency = tonumber(BL_Totals and BL_Totals.fp)
+end
+
 function BL_Shortcut(sender,name,iname,icat)
 	local shortcut = sender:GetShortcut()
 	local itemType = shortcut:GetType()
@@ -93,6 +122,21 @@ function BL_Window:Constructor()
 	self:SetPosition( pos.x, pos.y )
 	self:SetText( UI.title )
 	self:SetVisible( false )
+
+	-- Current Birding proficiency and highest title reached.
+	self.proficiency = self:AddField(Label, "", {x=30,y=24}, {x=280,y=16} )
+	self.proficiency:SetForeColor( whiteColor )
+	self.proficiency:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleCenter )
+	self:RefreshProficiency()
+
+	-- Keep the label live while the window is visible. If proficiency changes while
+	-- hidden, it is refreshed on the first update after the window is shown again.
+	self:SetWantsUpdates( true )
+	self.Update = function(sender,args)
+		if not sender:IsVisible() then return end
+		local fp = tonumber(BL_Totals and BL_Totals.fp)
+		if fp ~= sender._lastProficiency then sender:RefreshProficiency() end
+	end
 
 -- Hobby:Birding action is Type=Hobby(9), Data=0x7000EE1E
 
