@@ -113,8 +113,9 @@ end
 function BL_Window:Constructor()
 	Turbine.UI.Lotro.Window.Constructor( self )
 
-	-- Position the window near the top center of the screen.
-	self:SetSize( 340,275 )
+	-- Slightly roomier than the original layout so the proficiency line and
+	-- equipment rows have breathing space without changing the overall style.
+	self:SetSize( 360,295 )
 --	self:SetBackColor( Turbine.UI.Color() )
 	local pos = BL_Options.pos1 or 
 		{ x=(Turbine.UI.Display.GetWidth() - self:GetWidth())/3, 
@@ -124,7 +125,7 @@ function BL_Window:Constructor()
 	self:SetVisible( false )
 
 	-- Current Birding proficiency and highest title reached.
-	self.proficiency = self:AddField(Label, "", {x=30,y=24}, {x=280,y=16} )
+	self.proficiency = self:AddField(Label, "", {x=30,y=27}, {x=300,y=16} )
 	self.proficiency:SetForeColor( whiteColor )
 	self.proficiency:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleCenter )
 	self:RefreshProficiency()
@@ -141,11 +142,11 @@ function BL_Window:Constructor()
 -- Hobby:Birding action is Type=Hobby(9), Data=0x7000EE1E
 
 	-- Create a Name field
-	self.name = self:AddField(Label, UI.kit, {x=37,y=47}, {x=80,y=16} )
+	self.name = self:AddField(Label, UI.kit, {x=42,y=57}, {x=80,y=16} )
 	self.name:SetFont(Turbine.UI.Lotro.Font.TrajanPro18)
 
 	-- Create an kit field
-	self.kit = self:AddField(Quickslot, nil, {x=115,y=40}, {x=Qsize,y=Qsize} )
+	self.kit = self:AddField(Quickslot, nil, {x=125,y=50}, {x=Qsize,y=Qsize} )
 	Blank = self.kit:GetShortcut()
 	if BL_Totals.kit then self.kit:SetShortcut( Shortcut(Item,BL_Totals.kit) ) 
 	else self.kit:SetBackground("Dusk/BirdingLog/Kit.tga") end
@@ -154,20 +155,20 @@ function BL_Window:Constructor()
 	end
 
 	-- Create a birding label
-	self:AddField(Label, UI.spot, {x=185,y=45}, {x=70,y=16} )
+	self:AddField(Label, UI.spot, {x=205,y=55}, {x=75,y=16} )
 
 	-- Create an birding field
-	self.fish = self:AddField(Quickslot, nil, {x=255,y=40}, {x=Qsize,y=Qsize} )
+	self.fish = self:AddField(Quickslot, nil, {x=285,y=50}, {x=Qsize,y=Qsize} )
 	self.fish:SetShortcut( Shortcut(Hobby,"0x7006B1F4") )
     self.fish:SetAllowDrop( false )
 	self.fish.MouseEnter = function( sender, args ) BL_TrackHover = true end
 	self.fish.MouseLeave = function( sender, args ) BL_TrackHover = false end
 
 	-- Create a weapon label
-	self:AddField(Label, UI.weapon, {x=45,y=95}, {x=70,y=16} )
+	self:AddField(Label, UI.weapon, {x=50,y=107}, {x=70,y=16} )
 
 	-- Create an weapon field, weapon slot=16, cat=104
-	self.weapon = self:AddField(Quickslot, nil, {x=115,y=90}, {x=Qsize,y=Qsize} )
+	self.weapon = self:AddField(Quickslot, nil, {x=125,y=100}, {x=Qsize,y=Qsize} )
 	if BL_Totals.wpn then self.weapon:SetShortcut( Shortcut(Item,BL_Totals.wpn) ) 
 	else self.weapon:SetBackground("Dusk/BirdingLog/Sword.tga") end
 	self.weapon.ShortcutChanged = function( sender, args )
@@ -175,10 +176,10 @@ function BL_Window:Constructor()
 	end
 
 	-- Create a Shield label
-	self:AddField(Label, UI.second, {x=190,y=95}, {x=60,y=16} )
+	self:AddField(Label, UI.second, {x=210,y=107}, {x=70,y=16} )
 
 	-- Create an shield field, shield slot=17
-	self.shield = self:AddField(Quickslot, nil, {x=255,y=90}, {x=Qsize,y=Qsize} )
+	self.shield = self:AddField(Quickslot, nil, {x=285,y=100}, {x=Qsize,y=Qsize} )
 	if BL_Totals.shl then self.shield:SetShortcut( Shortcut(Item,BL_Totals.shl) ) 
 	else self.shield:SetBackground("Dusk/BirdingLog/Shield.tga") end
 	self.shield.ShortcutChanged = function( sender, args )
@@ -188,7 +189,7 @@ function BL_Window:Constructor()
 
 	-- Location button: keep the proven working LOTRO Quickslot Alias overlay.
 	-- The Quickslot covers the whole button and receives the real player click.
-	self.locButton = self:AddField(Button, UI.setzone, {x=30,y=140}, {x=125,y=20} )
+	self.locButton = self:AddField(Button, UI.setzone, {x=30,y=150}, {x=135,y=20} )
 
 	local slot = Turbine.UI.Lotro.Quickslot()
 	slot:SetParent( self.locButton )
@@ -203,13 +204,13 @@ function BL_Window:Constructor()
     -- Quickslot. Hide only that bleed in the empty gap below the button.
     local aliasBleedMask = Turbine.UI.Control()
     aliasBleedMask:SetParent( self )
-    aliasBleedMask:SetPosition( 28,160 )
-    aliasBleedMask:SetSize( 130,8 )
+    aliasBleedMask:SetPosition( 28,170 )
+    aliasBleedMask:SetSize( 140,8 )
     aliasBleedMask:SetBackColor( backColor )
     aliasBleedMask:SetMouseVisible( false )
     aliasBleedMask:SetZOrder( 100 )
 	-- Create a Zone menu button
-	self.zoneMenu = self:AddField(DropMenu, "", {x=175,y=140}, {x=135,y=20} )
+	self.zoneMenu = self:AddField(DropMenu, "", {x=195,y=150}, {x=135,y=20} )
 	local action = function(args)
 		BL_LocStr = BL_Zname[args]
 		if not BL_Locs[BL_LocStr] then BL_Locs[BL_LocStr] = {} end
@@ -220,35 +221,35 @@ function BL_Window:Constructor()
 	end
 
 	-- Create a sighting listing button
-	self.birdsButton = self:AddField(Button, UI.zonebirds, {x=30,y=170}, {x=125,y=20} )
+	self.birdsButton = self:AddField(Button, UI.zonebirds, {x=30,y=180}, {x=135,y=20} )
 	self.birdsButton.Click = function( sender,args )
         BL_Command:Execute("bll","zone")
 	end
 
 	-- Create a zones button
-	self.zonesButton = self:AddField(Button, UI.listzones, {x=175,y=170}, {x=135,y=20} )
+	self.zonesButton = self:AddField(Button, UI.listzones, {x=195,y=180}, {x=135,y=20} )
 	self.zonesButton.Click = function( sender,args )
         BL_Command:Execute("bl","zones")
 	end
 
 	-- Create a sighting listing button
-	self.seenButton = self:AddField(Button, UI.seen, {x=30,y=200}, {x=125,y=20} )
+	self.seenButton = self:AddField(Button, UI.seen, {x=30,y=210}, {x=135,y=20} )
 	self.seenButton.Click = function( sender,args )
         BL_Command:Execute("bll","list")
 	end
 
 	-- Create a totals button
-	self.totalsButton = self:AddField(Button, UI.totals, {x=175,y=200}, {x=135,y=20} )
+	self.totalsButton = self:AddField(Button, UI.totals, {x=195,y=210}, {x=135,y=20} )
 	self.totalsButton.Click = function( sender,args )
         BL_Command:Execute("bl","sight")
 	end
 
 	-- Create an Add Bird label
-	self:AddField(Label, UI.add, {x=35,y=230}, {x=75,y=16} )
+	self:AddField(Label, UI.add, {x=35,y=250}, {x=75,y=16} )
 
 	-- Create an Add Bird menu button. Use an explicit label->ID map so
 	-- duplicate localized names can never increment the wrong bird.
-	self.birdMenu = self:AddField(DropMenu, "", {x=100,y=230}, {x=210,y=20} )
+	self.birdMenu = self:AddField(DropMenu, "", {x=110,y=250}, {x=220,y=20} )
 	local birdMenuIds = {}
 	local action = function(args)
 		local id = birdMenuIds[args]
