@@ -68,14 +68,18 @@ require('import "Dusk.BirdingLog.BL_Loader"' not in loader716 and
 
 for needle, description in [
     ("BL_PendingShortcuts", "pending shortcut recovery"),
+    ("saved==false", "explicit pending-shortcut sentinel"),
     ("BL716_SaveOne", "callback-based PluginData saves"),
     ("BL716_SaveBatch", "batched save result tracking"),
     ("BL_FR_OfficialIDs={}", "fresh official-name index"),
+    ('BL_GID["6B900"]', "known Birder's Hat registration"),
     ("BL_CancelLocalization", "localization cancellation"),
     ("Turbine.Shell.RemoveCommand(BL_Command)", "shell-command cleanup"),
     ("BL716_ProbeLocalizedItemName", "single localization probe owner"),
+    ('return "BL716|"', "FR7.16 localization signature"),
 ]:
-    require(needle in runtime716, f"BL_Runtime716 is missing {description}")
+    require(needle in (loader716 + "\n" + runtime716),
+            f"FR7.16 runtime is missing {description}")
 
 require("GIDFrames" not in runtime716,
         "FR7.16 must not reintroduce frame-count localization busy estimation")
@@ -88,6 +92,8 @@ for lua_path in ROOT.rglob("*.lua"):
 
 zone_re = re.compile(r"\['([^']+)'\]\s*=\s*\{z\s*=")
 bird_re = re.compile(r'\["([0-9A-F]{5})"\]\s*=\s*\{n\s*=.*?f\s*=\s*\{([^}]*)\}', re.S)
+gid_section_re = re.compile(r"BL_GID\s*=\s*\{(.*?)\n\s*\}\s*\n\s*BL_ID\s*=", re.S)
+gid_id_re = re.compile(r'\["([0-9A-F]{5})"\]\s*=\s*\{n\s*=')
 quoted_re = re.compile(r"['\"]([^'\"]+)['\"]")
 
 
@@ -105,17 +111,30 @@ def parse_birds(text: str):
     return birds
 
 
+def parse_gids(text: str):
+    match = gid_section_re.search(text)
+    if not match:
+        errors.append("could not parse BL_GID section")
+        return set()
+    return set(gid_id_re.findall(match.group(1)))
+
+
 zones_en = parse_zones(data_en)
 zones_de = parse_zones(data_de)
 birds_en = parse_birds(data_en)
 birds_de = parse_birds(data_de)
+gids_en = parse_gids(data_en)
+gids_de = parse_gids(data_de)
 
 require(bool(zones_en), "no EN zones parsed")
 require(bool(birds_en), "no EN bird IDs parsed")
+require(bool(gids_en), "no EN GID IDs parsed")
 require(zones_en == zones_de,
         f"EN/DE zone-code sets differ: EN-only={sorted(zones_en-zones_de)}, DE-only={sorted(zones_de-zones_en)}")
 require(set(birds_en) == set(birds_de),
         f"EN/DE bird-ID sets differ: EN-only={sorted(set(birds_en)-set(birds_de))}, DE-only={sorted(set(birds_de)-set(birds_en))}")
+require(gids_en == gids_de,
+        f"EN/DE GID sets differ: EN-only={sorted(gids_en-gids_de)}, DE-only={sorted(gids_de-gids_en)}")
 
 for lang, birds, zones in [("EN", birds_en, zones_en), ("DE", birds_de, zones_de)]:
     for bird_id, refs in birds.items():
@@ -128,6 +147,9 @@ for lang, birds, zones in [("EN", birds_en, zones_en), ("DE", birds_de, zones_de
 fr_ids = set(re.findall(r'\["([0-9A-F]{5})"\]\s*=\s*"', data_fr))
 missing_fr = sorted(set(birds_en) - fr_ids)
 require(not missing_fr, f"missing embedded FR bird names: {missing_fr}")
+missing_fr_gids = sorted(gids_en - fr_ids)
+require(not missing_fr_gids, f"missing embedded FR hobby/reward names: {missing_fr_gids}")
+require("6B900" in fr_ids, "Birder's Hat FR name 6B900 is missing")
 
 zone_fr_match = re.search(r"local\s+ZoneFR\s*=\s*\{(.*?)\n\}", data_fr, re.S)
 fr_zone_codes = set(re.findall(r"\b([A-Za-z][A-Za-z])\s*=", zone_fr_match.group(1))) if zone_fr_match else set()
@@ -141,4 +163,7 @@ if errors:
     sys.exit(1)
 
 print(f"BirdingLog audit OK — {version}")
-print(f"Zones: {len(zones_en)} | Birds: {len(birds_en)} | Embedded FR IDs: {len(fr_ids)}")
+print(
+    f"Zones: {len(zones_en)} | Birds: {len(birds_en)} | "
+    f"Source GIDs: {len(gids_en)} | Embedded FR IDs: {len(fr_ids)}"
+)
