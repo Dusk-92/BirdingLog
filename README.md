@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.14**
+- Version du fork : **1.3-FR7.15**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -27,8 +27,8 @@ Cette version conserve le fonctionnement original de Birding Log tout en amélio
 - fenêtre restaurée maintenue dans les limites de la résolution actuelle ;
 - sauvegarde immédiate de la valeur d'échelle lors d'un changement dans les options ;
 - autosave périodique des observations et sauvegarde immédiate des changements importants ;
-- signalement d'un échec synchrone d'autosave avec nouvelle tentative ultérieure ;
-- vrai rafraîchissement manuel des noms appris dynamiquement avec `/bl fr`, différé si un probe est déjà en cours ;
+- retry explicite d'un autosave échoué dès la prochaine modification réelle des données ;
+- vrai rafraîchissement manuel des noms appris dynamiquement avec `/bl fr`, piloté par un état runtime de localisation ;
 - gestion plus sûre des noms localisés identiques ;
 - détection de zone déterministe lorsque plusieurs rectangles se chevauchent ;
 - décodage PluginData durci sans exécuter le contenu des sauvegardes comme du code Lua.
@@ -75,9 +75,11 @@ La signature n'est enregistrée qu'une fois les probes nécessaires réellement 
 
 Depuis **FR7.12**, `/bl fr` ne se contente plus de rechercher les noms absents : les noms provenant uniquement des caches dynamiques sont temporairement remis en file de probe. Les traductions officielles intégrées à `BL_FR.lua` ne sont jamais effacées. L'ancien nom appris reste utilisé comme repli si LOTRO ne renvoie rien de nouveau.
 
-Depuis **FR7.14**, si `/bl fr` est demandé pendant qu'une passe automatique oiseaux est encore active, la demande n'est plus perdue : BirdingLog attend la fin de cette passe puis relance le refresh manuel. Une attente de sécurité bornée évite qu'un ancien état incomplet ne bloque définitivement la commande.
+FR7.14 différerait déjà un `/bl fr` lancé pendant une passe oiseaux. Depuis **FR7.15**, cette décision ne repose plus directement sur `frProbeVersion` : BirdingLog maintient un état runtime de localisation qui suit la passe oiseaux et la queue des objets/récompenses `BL_GID`. Les demandes manuelles reçues pendant cette activité sont regroupées puis relancées dès la libération de cet état. Une sécurité de timeout reste présente afin qu'un contrôle Turbine bloqué ne verrouille pas définitivement le refresh.
 
-FR7.11 à FR7.14 conservent la signature `BL710` car ces versions ne changent ni les ID d'oiseaux ni les ID de récompenses : aucune nouvelle passe automatique de localisation n'est déclenchée inutilement.
+`BL_IsLocalizationBusy()` expose cet état runtime aux futures couches du plugin sans transformer le marqueur persistant `frProbeVersion` en pseudo-indicateur d'activité.
+
+FR7.11 à FR7.15 conservent la signature `BL710` car ces versions ne changent ni les ID d'oiseaux ni les ID de récompenses : aucune nouvelle passe automatique de localisation n'est déclenchée inutilement.
 
 Les noms localisés des récompenses et objets d'ornithologie appris dynamiquement sont conservés séparément dans `BL_GNames`. Une récompense déjà connue par son ID est reconnue même lorsque `/bl track` est désactivé ; ce mode sert uniquement aux objets réellement inconnus.
 
@@ -109,7 +111,7 @@ Les compteurs d'oiseaux et de zones non numériques sont ramenés à une valeur 
 
 Afin de limiter les pertes en cas de crash de LOTRO, FR7.12 sauvegarde automatiquement les données de runtime toutes les **10 observations reconnues**. Les changements de maîtrise, d'équipement, les ajouts manuels et les modifications manuelles de compteur déclenchent une sauvegarde immédiate. Une sauvegarde de consolidation est également faite après le chargement pour persister les anciennes données assainies.
 
-Depuis **FR7.14**, un échec synchrone d'autosave est signalé une seule fois au joueur. Le compteur d'observations n'est pas remis à zéro en cas d'échec, ce qui permet une nouvelle tentative au prochain changement au lieu de masquer la perte potentielle.
+Depuis **FR7.15**, un échec synchrone d'autosave active un indicateur de retry. La prochaine modification réelle d'une donnée sauvegardée — observation, maîtrise, nom dynamique, équipement, ajout ou compteur manuel — retente immédiatement la sauvegarde, même si le compteur périodique n'a pas encore atteint 10. Une sauvegarde réussie efface cet indicateur et remet le compteur périodique à zéro.
 
 Sur les clients FR/DE, la bibliothèque historique `Dusk/Common` convertit les valeurs PluginData afin de contourner les problèmes de séparateur décimal. Depuis FR7.9, cette conversion n'utilise plus `loadstring()` : les nombres sont décodés avec `tonumber()` en acceptant point ou virgule, et les données invalides sont conservées sans faire planter le chargement.
 
