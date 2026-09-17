@@ -3,9 +3,9 @@
   <Information>
 	<Name>BirdingLog</Name>
 	<Author>David Down / Dusk-92</Author>
-	<Version>1.3-FR7.14</Version>
+	<Version>1.3-FR7.15</Version>
 	<Image>Dusk/BirdingLog/Bird.tga</Image>
-	<Description>FR7.14 : restauration silencieuse des kits non résolus, refresh FR différé si un probe tourne déjà et autosave signalé en cas d’échec.</Description>
+	<Description>FR7.15 : état runtime réel des probes FR et nouvelle tentative d’autosave dès la modification suivante après un échec.</Description>
 	<website>https://github.com/Dusk-92/BirdingLog</website>
   </Information>
   <Package>Dusk.BirdingLog.BL_Loader712</Package>
