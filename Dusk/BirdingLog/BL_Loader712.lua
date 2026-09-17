@@ -1,4 +1,4 @@
--- BirdingLog FR7.14 compatibility patch.
+-- BirdingLog FR7.15 compatibility patch.
 -- File name kept as BL_Loader712 to avoid another loader layer. Loaded before
 -- FR7.11 so legacy shortcut data and window coordinates can be validated before
 -- BL_Main creates any Turbine UI controls.
@@ -8,10 +8,14 @@ import "Dusk.Common"
 
 local BL712_RawLoad = Turbine.PluginData.Load
 local BL712_ShortcutProbe = nil
-local BL714_UnresolvedKitData = nil
-local BL714_DeferredRefresh = nil
-local BL714_BypassProbeWait = false
-local BL714_SaveWarningShown = false
+local BL715_UnresolvedKitData = nil
+local BL715_DeferredRefresh = false
+local BL715_LocalizationBusy = false
+local BL715_LocalizationWatcher = nil
+local BL715_LocalizationGIDFrames = 0
+local BL715_LocalizationWatchAge = 0
+local BL715_SaveWarningShown = false
+local BL715_SaveRetryPending = false
 
 local function BL712_Clamp(value,minValue,maxValue)
     local n=tonumber(value)
@@ -94,10 +98,10 @@ Turbine.PluginData.Load=function(scope,key,callback)
         if kit and kitUnresolved then
             -- Keep the data out of BL_Main/FR7.11 while the item is unresolved.
             -- It will be restored quietly after those loaders finish.
-            BL714_UnresolvedKitData=kit
+            BL715_UnresolvedKitData=kit
             value.kit=nil
         else
-            BL714_UnresolvedKitData=nil
+            BL715_UnresolvedKitData=nil
             value.kit=kit
         end
         value.wpn=BL713_ValidateShortcutData(value.wpn)
@@ -115,18 +119,18 @@ if not BL712_LoadOK then error(BL712_LoadError) end
 -- Restore a prevalidated but unresolved kit without firing the historical
 -- ShortcutChanged callback. Revalidate once more in case LOTRO resolved it while
 -- the rest of the plugin was loading; a newly resolved wrong category is rejected.
-if BL714_UnresolvedKitData and BL_Totals and BL_window and BL_window.kit then
+if BL715_UnresolvedKitData and BL_Totals and BL_window and BL_window.kit then
     local control=BL_window.kit
     local previousChanged=control.ShortcutChanged
     control.ShortcutChanged=nil
 
     local valid=false
     local ok=pcall(function()
-        local shortcut=Turbine.UI.Lotro.Shortcut(Turbine.UI.Lotro.ShortcutType.Item,BL714_UnresolvedKitData)
+        local shortcut=Turbine.UI.Lotro.Shortcut(Turbine.UI.Lotro.ShortcutType.Item,BL715_UnresolvedKitData)
         control:SetShortcut(shortcut)
         local resolved=control:GetShortcut()
         if not resolved or resolved:GetType()~=Turbine.UI.Lotro.ShortcutType.Item then return end
-        if resolved:GetData()~=BL714_UnresolvedKitData then return end
+        if resolved:GetData()~=BL715_UnresolvedKitData then return end
 
         local item=resolved:GetItem()
         local info=item and item:GetItemInfo()
@@ -142,47 +146,88 @@ if BL714_UnresolvedKitData and BL_Totals and BL_window and BL_window.kit then
     end
 
     control.ShortcutChanged=previousChanged
-    BL_Totals.kit=(ok and valid) and BL714_UnresolvedKitData or nil
-    BL714_UnresolvedKitData=nil
+    BL_Totals.kit=(ok and valid) and BL715_UnresolvedKitData or nil
+    BL715_UnresolvedKitData=nil
 end
 
--- /bl fr must really refresh names learned dynamically. If a previous automatic
--- bird-name probe is still finishing, defer the manual refresh until that pass
--- completes instead of silently losing the user's request.
-local BL712_PreviousAutoLocalize=BL_AutoLocalize
-local function BL714_ScheduleDeferredRefresh()
-    if BL714_DeferredRefresh then return end
+-- Build the same database signature as FR7.11 so startup can tell whether that
+-- loader actually launched a reward-object probe in this session.
+local function BL715_LocalizationSignature()
+    local ids={}
+    for id in pairs(BL_ID or {}) do table.insert(ids,"B:"..tostring(id)) end
+    for id in pairs(BL_GID or {}) do table.insert(ids,"G:"..tostring(id)) end
+    table.sort(ids)
+    return "BL710|"..table.concat(ids,"|")
+end
 
-    BL_Print(BL_Lang=="FR" and
-        "Localisation FR déjà en cours ; le rafraîchissement manuel sera relancé juste après." or
-        "Localization already in progress; the manual refresh will run afterwards.")
+local function BL715_CountMissingGIDs()
+    local count=0
+    for _,t in pairs(BL_GID or {}) do
+        if type(t)=="table" and (not t.ln or t.ln=="") then count=count+1 end
+    end
+    return count
+end
 
-    local frames=0
-    BL714_DeferredRefresh=Turbine.UI.Control()
-    BL714_DeferredRefresh:SetWantsUpdates(true)
-    BL714_DeferredRefresh.Update=function(sender,args)
-        frames=frames+1
-        local finished=BL_Options and BL_Options.frProbeVersion==3
-        if finished or frames>=240 then
+-- Track localization as a runtime state instead of treating frProbeVersion as the
+-- state itself. The bird marker is only observed while this watcher is active;
+-- reward probes get a bounded frame budget derived from their actual queue size.
+local function BL715_StartLocalizationWatch(gidCount)
+    gidCount=tonumber(gidCount) or 0
+    local gidFrames=gidCount>0 and (math.ceil(gidCount/4)+1) or 0
+    if gidFrames>BL715_LocalizationGIDFrames then
+        BL715_LocalizationGIDFrames=gidFrames
+    end
+
+    BL715_LocalizationBusy=true
+    if BL715_LocalizationWatcher then return end
+
+    BL715_LocalizationWatchAge=0
+    BL715_LocalizationWatcher=Turbine.UI.Control()
+    BL715_LocalizationWatcher:SetWantsUpdates(true)
+    BL715_LocalizationWatcher.Update=function(sender,args)
+        BL715_LocalizationWatchAge=BL715_LocalizationWatchAge+1
+        if BL715_LocalizationGIDFrames>0 then
+            BL715_LocalizationGIDFrames=BL715_LocalizationGIDFrames-1
+        end
+
+        local birdBusy=BL_Options and BL_Options.frProbeVersion~=3
+        local timedOut=BL715_LocalizationWatchAge>=3600
+        if (not birdBusy and BL715_LocalizationGIDFrames<=0) or timedOut then
             sender:SetWantsUpdates(false)
-            BL714_DeferredRefresh=nil
-            if not finished then BL714_BypassProbeWait=true end
-            BL_AutoLocalize(true)
+            BL715_LocalizationWatcher=nil
+            BL715_LocalizationBusy=false
+            BL715_LocalizationGIDFrames=0
+
+            if BL715_DeferredRefresh then
+                BL715_DeferredRefresh=false
+                BL_AutoLocalize(true)
+            end
         end
     end
 end
 
+function BL_IsLocalizationBusy()
+    return BL715_LocalizationBusy==true
+end
+
+-- /bl fr really refreshes names learned dynamically. Manual requests made while
+-- a known runtime probe is active are coalesced and replayed immediately after it.
+local BL712_PreviousAutoLocalize=BL_AutoLocalize
 if type(BL712_PreviousAutoLocalize)=="function" then
     BL_AutoLocalize=function(force)
         if not force or BL_Lang~="FR" then
             return BL712_PreviousAutoLocalize(force)
         end
 
-        if not BL714_BypassProbeWait and BL_Options and BL_Options.frProbeVersion~=3 then
-            BL714_ScheduleDeferredRefresh()
+        if BL715_LocalizationBusy then
+            if not BL715_DeferredRefresh then
+                BL_Print(BL_Lang=="FR" and
+                    "Localisation FR déjà en cours ; le rafraîchissement manuel sera relancé juste après." or
+                    "Localization already in progress; the manual refresh will run afterwards.")
+            end
+            BL715_DeferredRefresh=true
             return
         end
-        BL714_BypassProbeWait=false
 
         local restoreBirds,restoreGIDs={},{}
 
@@ -204,6 +249,7 @@ if type(BL712_PreviousAutoLocalize)=="function" then
             end
         end
 
+        local queuedGIDs=BL715_CountMissingGIDs()
         local ok,result=pcall(BL712_PreviousAutoLocalize,true)
 
         -- The underlying probes build their queues synchronously before returning.
@@ -218,14 +264,30 @@ if type(BL712_PreviousAutoLocalize)=="function" then
         end
 
         if not ok then error(result) end
+        BL715_StartLocalizationWatch(queuedGIDs)
         return result
+    end
+
+    -- During synchronous plugin loading no Update frame has run yet. Therefore a
+    -- non-complete bird marker here represents a probe actually started this load.
+    -- For rewards, FR7.11 only started a startup probe when the DB signature changed.
+    local startupGIDs=0
+    if BL_Options and BL_Options.frProbeSignature~=BL715_LocalizationSignature() then
+        startupGIDs=BL715_CountMissingGIDs()
+    end
+    if (BL_Options and BL_Options.frProbeVersion~=3) or startupGIDs>0 then
+        BL715_StartLocalizationWatch(startupGIDs)
     end
 end
 
 local BL712_SaveBusy=false
 local BL712_ObservationsSinceSave=0
 local function BL712_SaveRuntimeData()
-    if BL712_SaveBusy then return false end
+    if BL712_SaveBusy then
+        BL715_SaveRetryPending=true
+        return false
+    end
+
     BL712_SaveBusy=true
     local ok=pcall(function()
         if type(BL_Locs)=="table" then
@@ -245,14 +307,18 @@ local function BL712_SaveRuntimeData()
 
     if ok then
         BL712_ObservationsSinceSave=0
-        BL714_SaveWarningShown=false
-    elseif not BL714_SaveWarningShown then
-        BL714_SaveWarningShown=true
-        pcall(function()
-            BL_PrintE(BL_Lang=="FR" and
-                "La sauvegarde automatique a échoué ; BirdingLog réessaiera au prochain changement." or
-                "Automatic save failed; BirdingLog will retry on the next change.")
-        end)
+        BL715_SaveRetryPending=false
+        BL715_SaveWarningShown=false
+    else
+        BL715_SaveRetryPending=true
+        if not BL715_SaveWarningShown then
+            BL715_SaveWarningShown=true
+            pcall(function()
+                BL_PrintE(BL_Lang=="FR" and
+                    "La sauvegarde automatique a échoué ; BirdingLog réessaiera au prochain changement." or
+                    "Automatic save failed; BirdingLog will retry on the next change.")
+            end)
+        end
     end
     return ok
 end
@@ -291,7 +357,8 @@ if BL_window then
 end
 
 -- Autosave every ten recognised observations. Proficiency changes and newly
--- learned dynamic names are rare and are persisted immediately.
+-- learned dynamic names are persisted immediately. After any failed save, the
+-- next actual saved-data change retries immediately instead of waiting for ten.
 local BL712_BaseChat=Turbine.Chat.Received
 local BL712_BaseBLHandler=BL_ChatHandler
 local BL712_BaseBLPrevious=BL_PreviousChatHandler
@@ -337,16 +404,19 @@ local function BL712_ChatHandler(sender,args)
 
     local afterFP=BL_Totals and BL_Totals.fp
     local importantChange=learnedName or afterFP~=beforeFP
-    if importantChange then BL712_SaveRuntimeData() end
+    local birdChanged=false
 
     if birdID then
         local afterCount=tonumber(BL_Totals and BL_Totals[birdID]) or 0
-        if afterCount>beforeCount and not importantChange then
+        birdChanged=afterCount>beforeCount
+        if birdChanged and not importantChange then
             BL712_ObservationsSinceSave=BL712_ObservationsSinceSave+1
-            if BL712_ObservationsSinceSave>=10 then
-                BL712_SaveRuntimeData()
-            end
         end
+    end
+
+    if importantChange or
+       (birdChanged and (BL715_SaveRetryPending or BL712_ObservationsSinceSave>=10)) then
+        BL712_SaveRuntimeData()
     end
 
     return result
@@ -365,10 +435,12 @@ Plugins.BirdingLog.Unload=function(sender,args)
     if BL712_Generation==BL712_ChatGeneration then
         BL712_ChatGeneration=BL712_ChatGeneration+1
     end
-    if BL714_DeferredRefresh then
-        BL714_DeferredRefresh:SetWantsUpdates(false)
-        BL714_DeferredRefresh=nil
+    if BL715_LocalizationWatcher then
+        BL715_LocalizationWatcher:SetWantsUpdates(false)
+        BL715_LocalizationWatcher=nil
     end
+    BL715_LocalizationBusy=false
+    BL715_DeferredRefresh=false
     BL712_SaveRuntimeData()
 
     if Turbine.Chat.Received==BL712_ChatHandler then
