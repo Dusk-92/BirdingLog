@@ -619,7 +619,7 @@ local function BL716_ActivateZone(code,messagePrefix)
     return true
 end
 
-local function BL716_RememberArea(context,code,announce)
+local function BL716_RememberArea(context,code,announce,deferSave)
     if type(context)~="table" or not context.key or not BL_Zone or not BL_Zone[code] then return false end
     if not BL716_ZoneMatchesRegion(code,context.regionIndex) then return false end
 
@@ -633,15 +633,15 @@ local function BL716_RememberArea(context,code,announce)
             BL_Print((BL_Lang=="FR" and "Sous-zone mémorisée pour " or "Sub-area remembered for ")..
                 (BL_Zone[code].ln or BL_Zone[code].z)..".")
         end
-        BL716_SaveRuntimeData()
+        if not deferSave then BL716_SaveRuntimeData() end
     end
-    return true
+    return changed
 end
 
 function BL_LearnCurrentArea(code)
     local context=BL716_PendingArea
     if not context then return false end
-    if not BL716_RememberArea(context,code,true) then return false end
+    if not BL716_RememberArea(context,code,true,false) then return false end
     return true
 end
 
@@ -686,7 +686,7 @@ local function BL716_LearnAreaFromBird(id)
         BL_Lang=="FR" and "Zone d’ornithologie reconnue automatiquement : " or
             "Birding zone learned automatically: "
     )
-    BL716_RememberArea(context,last,false)
+    BL716_RememberArea(context,last,false,true)
     return true
 end
 
@@ -764,7 +764,8 @@ local function BL716_ChatHandler(sender,args)
             (BL_Lang=="FR" and ", total=" or ", count=")..BL_Totals[id])
         if BL_deedsWindow and BL_deedsWindow:IsVisible() then BL_deedsWindow:Refresh() end
 
-        if not BL_LocStr then BL716_LearnAreaFromBird(id) end
+        local areaLearned=false
+        if not BL_LocStr then areaLearned=BL716_LearnAreaFromBird(id) end
 
         if BL_LocStr then
             local loc=BL_Locs[BL_LocStr]
@@ -773,7 +774,7 @@ local function BL716_ChatHandler(sender,args)
         end
 
         BL716_ObservationsSinceSave=BL716_ObservationsSinceSave+1
-        if learned or BL716_SaveRetryPending or BL716_ObservationsSinceSave>=10 then
+        if learned or areaLearned or BL716_SaveRetryPending or BL716_ObservationsSinceSave>=10 then
             BL716_SaveRuntimeData()
         end
         return
