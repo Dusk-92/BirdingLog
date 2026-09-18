@@ -1,5 +1,5 @@
 -- Birding Log by David Down
--- FR7.22: construction/data/UI only; BL_Runtime716 owns runtime behavior.
+-- FR7.23: construction/data/UI only; BL_Runtime716 owns runtime behavior.
 
 import "Turbine"
 import "Turbine.Gameplay"
@@ -52,6 +52,7 @@ if type(BL_Totals) ~= "table" then
     BL_Print(BL_Lang=="FR" and "Nouveau carnet d’ornithologie créé." or "Created new birding record")
 end
 
+import "Dusk.BirdingLog.BL_Deeds"
 import "Dusk.BirdingLog.BL_Window"
 import "Dusk.BirdingLog.BL_Icon"
 
@@ -87,6 +88,8 @@ BL_Help = {
         track = "Toggle unknown bird tracking.",
         fr = "Refresh French names from LOTRO.",
         zones = "List birding zones and counts.",
+        deeds = "Open the Birding deeds window.",
+        ["deed <zone>"] = "Open deed details for a Birding zone.",
     },
     cmd = {
         bll = {
@@ -111,6 +114,8 @@ if BL_Lang=="FR" then
             track = "Activer/désactiver le suivi des oiseaux inconnus.",
             fr = "Relancer la localisation automatique française.",
             zones = "Afficher les zones et leur progression.",
+            deeds = "Ouvrir la fenêtre des prouesses d’ornithologie.",
+            ["deed <zone>"] = "Ouvrir le détail de la prouesse d’une zone.",
         },
         cmd = {
             bll = {
