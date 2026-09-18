@@ -122,12 +122,18 @@ function BL_DeedsWindow:Constructor()
 
     local sw,sh=Turbine.UI.Display.GetWidth(),Turbine.UI.Display.GetHeight()
     local saved=BL_Options and BL_Options.pos2
+    local scale=(BL_Options and tonumber(BL_Options.scale)) or 1
+    local maxX=math.max(0,sw-math.floor(self:GetWidth()*scale+0.5))
+    local maxY=math.max(0,sh-math.floor(self:GetHeight()*scale+0.5))
     if type(saved)=="table" and tonumber(saved.x) and tonumber(saved.y) then
-        self:SetPosition(tonumber(saved.x),tonumber(saved.y))
+        self:SetPosition(
+            math.max(0,math.min(tonumber(saved.x),maxX)),
+            math.max(0,math.min(tonumber(saved.y),maxY))
+        )
     else
         self:SetPosition(
-            math.max(0,math.floor((sw-self:GetWidth())/2)),
-            math.max(0,math.floor((sh-self:GetHeight())/2))
+            math.max(0,math.floor(maxX/2)),
+            math.max(0,math.floor(maxY/2))
         )
     end
 
