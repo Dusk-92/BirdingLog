@@ -1,4 +1,4 @@
-09/18/26 1.3-FR7.22	Release consolidation: atomic shortcut-state recovery, single runtime owner, integer counters, protected icon persistence, corrected FR titles/DE source data and regression tests.
+09/18/26 1.3-FR7.23	Add a dedicated Birding deeds window with zone progress, per-bird completion details, known rewards and live refresh.\n09/18/26 1.3-FR7.22	Release consolidation: atomic shortcut-state recovery, single runtime owner, integer counters, protected icon persistence, corrected FR titles/DE source data and regression tests.
 09/18/26 1.3-FR7.21	Isolate the Lua apartment, migrate legacy/double-encoded saves safely, consolidate kit handling and remove per-frame proficiency polling.
 09/17/26 1.3-FR7.20	Slightly enlarge the main window and space out proficiency, equipment, buttons and add-bird controls for a less cramped layout.
 09/17/26 1.3-FR7.19	Show Birding proficiency level and highest reached title directly in the main window, with live refresh while visible.
