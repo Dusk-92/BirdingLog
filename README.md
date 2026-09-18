@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.20**
+- Version du fork : **1.3-FR7.21**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -26,6 +26,8 @@ Cette version conserve l'interface et les données historiques de Birding Log to
 - assainissement des anciennes sauvegardes avant création de l'interface ;
 - autosave périodique et sauvegardes immédiates des changements importants ;
 - sauvegardes runtime vérifiées avec le callback réel de `PluginData.Save` ;
+- lecture compatible avec les anciennes sauvegardes Dusk simple/double-encodées et changement de langue FR/DE/EN ;
+- appartement Lua dédié `BirdingLog`, isolé de FishingLog et TravelRef ;
 - nettoyage renforcé des handlers, commandes et contrôles asynchrones à l'unload ;
 - audit GitHub Actions avec compilation Lua 5.1 et contrôles d'invariants.
 
@@ -82,13 +84,113 @@ Le runtime FR7.16 possède un seul propriétaire pour :
 - les commandes BirdingLog ;
 - le nettoyage à l'unload.
 
-**FR7.17** ajoute une petite surcouche `BL_Runtime717.lua` uniquement pour le slot **Kit**. Elle ne remplace pas le runtime consolidé : elle neutralise spécifiquement l'ancienne hypothèse `BL_BirdingKit=104`, qui rejette aujourd'hui le véritable Kit d'ornithologie de base de LOTRO.
+**FR7.17** a supprimé la dépendance fonctionnelle à la catégorie historique `104` pour le slot **Kit**. Depuis **FR7.21**, cette compatibilité est intégrée directement à `BL_Runtime716.lua` : `BL_Runtime717.lua` n’est plus nécessaire.
 
 **FR7.18** aligne l'icône flottante sur TravelRef et LOTRO Events : `BL_IconWindow` utilise désormais `SetZOrder(0)`. La carte et les autres panneaux natifs LOTRO peuvent donc la recouvrir normalement.
 
 **FR7.19** ajoute dans la fenêtre principale une ligne de maîtrise du type `Ornithologie : niveau 28 — Bird-brained`. Le meilleur rang atteint est calculé depuis les paliers `BL_Title`. Tant que la fenêtre est visible, l'affichage est rafraîchi automatiquement si la maîtrise change ; si elle était fermée au moment du gain, la nouvelle valeur apparaît dès sa prochaine ouverture.
 
 **FR7.20** agrandit légèrement la fenêtre principale de `340x275` à `360x295` et redistribue les contrôles pour laisser davantage d'espace autour de la maîtrise et des deux rangées d'équipement, sans modifier leur fonctionnement.
+
+### FR7.21 — isolation et migration des sauvegardes
+
+FR7.21 supprime le monkeypatch global de `Turbine.PluginData.Load/Save`. Les helpers de `Dusk/Common` savent relire les anciennes sauvegardes marquées `# BirdingLog FR
+
+Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
+
+- Addon original : **Birding Log** par David Down (Vinny)
+- Adaptation / maintenance FR : **Dusk-92**
+- Version du fork : **1.3-FR7.21**
+- Addon original : https://www.lotrointerface.com/downloads/info1241
+
+## Objectif du fork
+
+Cette version conserve l'interface et les données historiques de Birding Log tout en renforçant son fonctionnement sur les clients français, anglais et allemands :
+
+- interface et messages principaux en français sur le client FR ;
+- noms français officiels des oiseaux liés aux ID internes LOTRO ;
+- suivi des observations indépendant de la langue du nom d'objet ;
+- coordonnées FR avec virgule décimale et `O` pour Ouest ;
+- détection de zone déterministe lorsque plusieurs rectangles se chevauchent ;
+- caches séparés pour les noms d'oiseaux et d'objets appris dynamiquement ;
+- Quickslots sauvegardés vérifiés contre les rejets silencieux de Turbine ;
+- récupération automatique d'un raccourci temporairement indisponible ;
+- slot Kit compatible avec les kits LOTRO actuels sans dépendre de l'ancienne catégorie `104` ;
+- icône flottante sur la couche UI normale afin que la carte et les panneaux natifs LOTRO puissent passer devant ;
+- niveau d'ornithologie et meilleur rang atteint affichés directement dans la fenêtre principale ;
+- fenêtre principale légèrement agrandie et redistribuée pour laisser plus d'espace entre les blocs ;
+- assainissement des anciennes sauvegardes avant création de l'interface ;
+- autosave périodique et sauvegardes immédiates des changements importants ;
+- sauvegardes runtime vérifiées avec le callback réel de `PluginData.Save` ;
+- lecture compatible avec les anciennes sauvegardes Dusk simple/double-encodées et changement de langue FR/DE/EN ;
+- appartement Lua dédié `BirdingLog`, isolé de FishingLog et TravelRef ;
+- nettoyage renforcé des handlers, commandes et contrôles asynchrones à l'unload ;
+- audit GitHub Actions avec compilation Lua 5.1 et contrôles d'invariants.
+
+## Installation
+
+Copier le dossier `Dusk` dans :
+
+```text
+Documents\The Lord of the Rings Online\Plugins\
+```
+
+Le fichier principal doit ensuite se trouver ici :
+
+```text
+Documents\The Lord of the Rings Online\Plugins\Dusk\BirdingLog.plugin
+```
+
+Dans LOTRO, actualiser le gestionnaire de plugins puis charger **BirdingLog**.
+
+## Commandes principales
+
+```text
+/bl             Afficher la maîtrise d'ornithologie
+/bl sight       Afficher les observations personnelles
+/bl zones       Afficher la progression par zone
+/bl fr          Rafraîchir les noms FR appris dynamiquement
+/bl track       Activer/désactiver le suivi des objets réellement inconnus
+/blw            Ouvrir la fenêtre BirdingLog
+/bll zone       Lister les oiseaux de la zone sélectionnée
+/bll list       Lister les observations de la zone sélectionnée
+/blg            Afficher la récompense de la zone sélectionnée
+```
+
+Le bouton **Détecter zone** utilise la commande LOTRO `;loc` (ou son équivalent localisé) et les coordonnées connues par BirdingLog. Les frontières réelles de certaines zones ne sont pas parfaitement rectangulaires : le menu manuel reste disponible pour corriger un cas de frontière exceptionnel.
+
+## Architecture FR7.16+
+
+Depuis **FR7.16**, le point d'entrée est :
+
+```text
+Dusk.BirdingLog.BL_Loader716
+```
+
+`BL_Loader716.lua` effectue uniquement le **préflight** des sauvegardes sensibles, charge une seule fois le cœur historique `BL_Main`, puis passe la main à `BL_Runtime716.lua`.
+
+Les anciens `BL_Loader.lua` et `BL_Loader712.lua` restent dans le dépôt pour l'historique mais **ne sont plus dans le chemin d'exécution actif**. Cela supprime l'empilement de wrappers qui rendait les versions FR7.11 à FR7.15 difficiles à auditer globalement.
+
+Le runtime FR7.16 possède un seul propriétaire pour :
+
+- le handler de chat BirdingLog ;
+- les sauvegardes runtime ;
+- la localisation dynamique FR ;
+- les validations de Quickslots après chargement ;
+- les commandes BirdingLog ;
+- le nettoyage à l'unload.
+
+**FR7.17** a supprimé la dépendance fonctionnelle à la catégorie historique `104` pour le slot **Kit**. Depuis **FR7.21**, cette compatibilité est intégrée directement à `BL_Runtime716.lua` : `BL_Runtime717.lua` n’est plus nécessaire.
+
+**FR7.18** aligne l'icône flottante sur TravelRef et LOTRO Events : `BL_IconWindow` utilise désormais `SetZOrder(0)`. La carte et les autres panneaux natifs LOTRO peuvent donc la recouvrir normalement.
+
+**FR7.19** ajoute dans la fenêtre principale une ligne de maîtrise du type `Ornithologie : niveau 28 — Bird-brained`. Le meilleur rang atteint est calculé depuis les paliers `BL_Title`. Tant que la fenêtre est visible, l'affichage est rafraîchi automatiquement si la maîtrise change ; si elle était fermée au moment du gain, la nouvelle valeur apparaît dès sa prochaine ouverture.
+
+**FR7.20** agrandit légèrement la fenêtre principale de `340x275` à `360x295` et redistribue les contrôles pour laisser davantage d'espace autour de la maîtrise et des deux rangées d'équipement, sans modifier leur fonctionnement.
+
+ / `#`, y compris une double couche laissée par d’anciens ordres de chargement. Une lecture en erreur désactive l’écriture de la clé concernée pour la session afin d’éviter d’écraser une sauvegarde valide.
+
+Le niveau d’ornithologie rafraîchit désormais directement la fenêtre lors du message de progression, sans polling à chaque frame. Le rang FR utilise `BL_TitleFR`, et l’ajout manuel appelle directement l’autosave.
 
 ## Données françaises et localisation dynamique
 
@@ -134,7 +236,7 @@ Si le joueur modifie ou vide ensuite l'emplacement, l'entrée pending est suppri
 
 Depuis **FR7.17**, le slot **Kit d'ornithologie** n'utilise plus `GetItemInfo():GetCategory()` ni la constante historique `BL_BirdingKit=104`. Le test runtime dans LOTRO a montré que cette valeur pouvait rejeter le véritable **Kit d'ornithologie de base**. Le slot Kit accepte donc désormais tout raccourci de type `Item` dont les données sont valides, comme les emplacements Arme et 2e slot. Cette règle s'applique aussi aux futurs kits que LOTRO pourrait exposer avec une autre catégorie interne.
 
-Les kits déjà sauvegardés sont protégés avant l'import de `BL_Runtime716`, afin que l'ancienne vérification par catégorie ne puisse pas les supprimer pendant le chargement. Après construction de la fenêtre, `BL_Runtime717.lua` prend uniquement en charge le handler du slot Kit et conserve la sauvegarde immédiate ainsi que la gestion des raccourcis pending.
+En **FR7.21**, la validation du Kit est directement intégrée au runtime principal : aucun contrôle par catégorie `104` n’est exécuté et aucune surcouche séparée n’est nécessaire. Les raccourcis pending et la sauvegarde immédiate restent pris en charge.
 
 Une seconde validation est toujours effectuée sur les vrais Quickslots après construction de la fenêtre afin de couvrir le cas où le probe de préflight accepte un raccourci mais où le contrôle réel le rejette quelques instructions plus tard.
 
@@ -181,7 +283,7 @@ Le dépôt contient `.github/workflows/audit.yml` et `tools/audit_repo.py`.
 - vérifie toutes les références oiseaux → zones ;
 - exige une traduction FR intégrée pour chaque oiseau et objet actuel ;
 - vérifie les protections essentielles du runtime consolidé ;
-- vérifie que `BL_Runtime717.lua` n'utilise ni `GetCategory()` ni `BL_BirdingKit` pour valider le kit ;
+- vérifie que le handler Kit consolidé n’utilise plus la catégorie historique `104` ;
 - vérifie que l'icône reste sur `SetZOrder(0)` depuis FR7.18 ;
 - vérifie la présence de l'affichage dynamique de maîtrise depuis FR7.19 ;
 - bloque le retour de `loadstring()`.
@@ -190,7 +292,7 @@ Cela ne remplace pas un test dans le moteur Turbine de LOTRO, mais attrape autom
 
 ## À propos de `Dusk/Common`
 
-BirdingLog et FishingLog utilisent la même bibliothèque historique `Dusk/Common`. Les fichiers partagés maintenus par le fork, notamment `Options.lua`, sont gardés identiques entre les deux dépôts afin qu'installer l'un n'écrase pas l'autre avec une variante incompatible.
+BirdingLog et FishingLog embarquent toujours la même bibliothèque historique `Dusk/Common`, gardée strictement identique dans les deux dépôts. Depuis FR7.21/FR8.5, chaque plugin utilise toutefois son **propre appartement Lua** et les helpers PluginData sont locaux : installer ou charger l’un ne modifie plus le runtime de l’autre ni celui de TravelRef.
 
 ## Plugin Compendium
 
