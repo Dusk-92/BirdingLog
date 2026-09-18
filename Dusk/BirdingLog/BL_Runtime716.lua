@@ -1,4 +1,4 @@
--- BirdingLog FR7.25 consolidated runtime.
+-- BirdingLog FR7.26 consolidated runtime.
 -- BL_Loader716 performs preflight and constructs BL_Main once; this module is
 -- the single owner of persistence, localization, chat, commands and unload.
 
@@ -1213,13 +1213,6 @@ Plugins.BirdingLog.Unload=function(sender,args)
     if BL_window and BL_Options then
         local x,y=BL_window:GetPosition()
         BL_Options.pos1={
-            x=math.floor((S.Number(x) or 0)+0.5),
-            y=math.floor((S.Number(y) or 0)+0.5),
-        }
-    end
-    if BL_deedsWindow and BL_Options then
-        local x,y=BL_deedsWindow:GetPosition()
-        BL_Options.pos2={
             x=math.floor((S.Number(x) or 0)+0.5),
             y=math.floor((S.Number(y) or 0)+0.5),
         }
