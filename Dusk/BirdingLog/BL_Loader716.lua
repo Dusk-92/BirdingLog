@@ -6,8 +6,12 @@ import "Turbine.UI.Lotro"
 import "Dusk.Common"
 
 BL716 = {
-    RawLoad = Turbine.PluginData.Load,
-    RawSave = Turbine.PluginData.Save,
+    NativeLoad = Turbine.PluginData.Load,
+    NativeSave = Turbine.PluginData.Save,
+    RawLoad = (Dusk.Common and Dusk.Common.PluginDataLoad) or Turbine.PluginData.Load,
+    RawLoadChecked = Dusk.Common and Dusk.Common.PluginDataLoadChecked,
+    RawSave = (Dusk.Common and Dusk.Common.PluginDataSave) or Turbine.PluginData.Save,
+    LoadFailures = {},
     ShortcutProbe = nil,
     OptionsCaptured = false,
     SavedProbeVersion = nil,
@@ -17,6 +21,20 @@ BL716 = {
     PendingShortcuts = nil,
 }
 local S = BL716
+
+function S.Load(scope,key,callback)
+    if type(S.RawLoadChecked)=="function" then
+        local value,ok,err=S.RawLoadChecked(scope,key,callback)
+        if ok==false then S.LoadFailures[key]=tostring(err or "load failed") end
+        return value
+    end
+    local ok,value=pcall(S.RawLoad,scope,key,callback)
+    if not ok then
+        S.LoadFailures[key]=tostring(value)
+        return nil
+    end
+    return value
+end
 
 function S.Finite(n)
     return type(n)=="number" and n==n and n~=math.huge and n~=-math.huge
@@ -55,7 +73,7 @@ end
 
 function S.LoadPendingShortcuts()
     if S.PendingShortcuts then return S.PendingShortcuts end
-    local pending=S.RawLoad(Turbine.DataScope.Character,"BL_PendingShortcuts")
+    local pending=S.Load(Turbine.DataScope.Character,"BL_PendingShortcuts")
     if type(pending)~="table" then pending={} end
     S.PendingShortcuts=pending
     return pending
@@ -118,8 +136,8 @@ local function SanitizeOptions(value)
 
     if value.pos1 then
         local sw,sh=Turbine.UI.Display.GetWidth(),Turbine.UI.Display.GetHeight()
-        local ww=math.floor(340*value.scale+0.5)
-        local wh=math.floor(275*value.scale+0.5)
+        local ww=math.floor(360*value.scale+0.5)
+        local wh=math.floor(295*value.scale+0.5)
         value.pos1.x=math.max(0,math.min(value.pos1.x,math.max(0,sw-ww)))
         value.pos1.y=math.max(0,math.min(value.pos1.y,math.max(0,sh-wh)))
     end
@@ -250,14 +268,14 @@ Turbine.PluginData.Load=function(scope,key,callback)
     local wrapped=callback and function(data)
         callback(TransformLoad(scope,key,data))
     end or nil
-    local value=S.RawLoad(scope,key,wrapped)
+    local value=S.Load(scope,key,wrapped)
     return TransformLoad(scope,key,value)
 end
 
 local mainOK,mainError=pcall(function()
     import "Dusk.BirdingLog.BL_Main"
 end)
-Turbine.PluginData.Load=S.RawLoad
+Turbine.PluginData.Load=S.NativeLoad
 if not mainOK then error(mainError) end
 
 if BL_Options then
@@ -265,15 +283,19 @@ if BL_Options then
     BL_Options.frProbeSignature=S.SavedProbeSignature
 end
 
--- FR7.17: BL_BirdingKit=104 is a legacy category assumption that rejects the
--- current Basic Birding Kit in LOTRO. Mark every already-restored kit to bypass
--- that historical category check before Runtime716 performs its revalidation.
-if BL_Totals and type(BL_Totals.kit)=="string" and BL_Totals.kit~="" then
-    BL_Totals.kitBypass=true
-end
-
 local runtimeOK,runtimeError=pcall(function()
     import "Dusk.BirdingLog.BL_Runtime716"
-    import "Dusk.BirdingLog.BL_Runtime717"
 end)
-if not runtimeOK then error(runtimeError) end
+if not runtimeOK then
+    -- BL_Main has already created UI/chat/shell objects. If the modern runtime
+    -- fails to import, unwind those side effects before surfacing the error.
+    pcall(function()
+        if Turbine.Chat.Received==BL_ChatHandler then
+            Turbine.Chat.Received=BL_PreviousChatHandler
+        end
+    end)
+    pcall(function() if BL_Command then Turbine.Shell.RemoveCommand(BL_Command) end end)
+    pcall(function() if BL_window then BL_window:SetWantsUpdates(false) BL_window:SetVisible(false) end end)
+    pcall(function() if BL_IconWindow then BL_IconWindow:SetVisible(false) end end)
+    error(runtimeError)
+end
