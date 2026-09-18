@@ -22,12 +22,12 @@ local Qsize = 34
 
 local UI = {
     title="Birding Log", kit="Birding kit:", spot="Spot bird:", weapon="Weapon:", second="2nd slot:",
-    setzone="Set Zone", zonebirds="Zone Birds", listzones="List Zones", seen="Birds Seen", totals="Personal Totals", add="Add Bird:"
+    setzone="Set Zone", zonebirds="Zone Birds", listzones="Deeds", seen="Birds Seen", totals="Personal Totals", add="Add Bird:"
 }
 if BL_Lang=="FR" then
     UI = {
         title="Carnet d'ornithologie", kit="Kit :", spot="Observer :", weapon="Arme :", second="2e slot :",
-        setzone="Détecter zone", zonebirds="Oiseaux zone", listzones="Liste zones", seen="Vus ici", totals="Totaux perso", add="Ajouter :"
+        setzone="Détecter zone", zonebirds="Oiseaux zone", listzones="Prouesses", seen="Vus ici", totals="Totaux perso", add="Ajouter :"
     }
 end
 
@@ -174,10 +174,14 @@ function BL_Window:Constructor()
         BL_Command:Execute("bll","zone")
 	end
 
-	-- Create a zones button
+	-- Deed progress button. The old /bl zones command remains available in chat.
 	self.zonesButton = self:AddField(Button, UI.listzones, {x=195,y=180}, {x=135,y=20} )
 	self.zonesButton.Click = function( sender,args )
-        BL_Command:Execute("bl","zones")
+        if type(BL_OpenDeeds)=="function" then
+            BL_OpenDeeds()
+        else
+            BL_Command:Execute("bl","zones")
+        end
 	end
 
 	-- Create a sighting listing button
@@ -213,6 +217,7 @@ function BL_Window:Constructor()
 		end
 		locTbl[id] = (locTbl[id] or 0)+1
 		BL_Print(BL_Lang=="FR" and ("Observation ajoutée : "..(BL_ID[id].ln or BL_ID[id].n)) or ("Added "..(BL_ID[id].ln or BL_ID[id].n).." sighting"))
+        if BL_deedsWindow and BL_deedsWindow:IsVisible() then BL_deedsWindow:Refresh() end
 		if type(BL_SaveRuntimeData)=="function" then BL_SaveRuntimeData() end
 	end
 	self.birdMenu.Menu.Click = function()

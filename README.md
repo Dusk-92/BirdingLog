@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.22**
+- Version du fork : **1.3-FR7.23**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -23,6 +23,7 @@ Cette version conserve l'interface et les données historiques de Birding Log to
 - icône flottante sur la couche UI normale afin que la carte et les panneaux natifs LOTRO puissent passer devant ;
 - niveau d'ornithologie et meilleur rang atteint affichés directement dans la fenêtre principale ;
 - fenêtre principale légèrement agrandie et redistribuée pour laisser plus d'espace entre les blocs ;
+- fenêtre **Prouesses** dédiée : progression par zone, détail des 16 oiseaux requis et récompense connue ;
 - assainissement des anciennes sauvegardes avant création de l'interface ;
 - autosave périodique et sauvegardes immédiates des changements importants ;
 - sauvegardes runtime vérifiées avec le callback réel de `PluginData.Save` ;
@@ -57,6 +58,8 @@ Dans LOTRO, actualiser le gestionnaire de plugins puis charger **BirdingLog**.
 /bl             Afficher la maîtrise d'ornithologie
 /bl sight       Afficher les observations personnelles
 /bl zones       Afficher la progression par zone
+/bl deeds       Ouvrir la fenêtre des prouesses
+/bl deed <zone> Ouvrir le détail d’une zone
 /bl fr          Rafraîchir les noms FR appris dynamiquement
 /bl track       Activer/désactiver le suivi des objets réellement inconnus
 /blw            Ouvrir la fenêtre BirdingLog
@@ -95,6 +98,14 @@ Le runtime FR7.16 possède un seul propriétaire pour :
 **FR7.19** ajoute dans la fenêtre principale une ligne de maîtrise du type `Ornithologie : niveau 28 — Bird-brained`. Le meilleur rang atteint est calculé depuis les paliers `BL_Title`. Tant que la fenêtre est visible, l'affichage est rafraîchi automatiquement si la maîtrise change ; si elle était fermée au moment du gain, la nouvelle valeur apparaît dès sa prochaine ouverture.
 
 **FR7.20** agrandit légèrement la fenêtre principale de `340x275` à `360x295` et redistribue les contrôles pour laisser davantage d'espace autour de la maîtrise et des deux rangées d'équipement, sans modifier leur fonctionnement.
+
+### FR7.23 — suivi des prouesses
+
+FR7.23 ajoute une fenêtre **Prouesses d'ornithologie** accessible depuis le bouton **Prouesses** de la fenêtre principale ou avec `/bl deeds`.
+
+La vue générale affiche les 33 zones connues et leur progression `X/16`. Un clic sur une zone ouvre le détail des oiseaux trouvés/manquants, ainsi que la récompense associée lorsque BirdingLog la connaît. La commande `/bl deed <zone>` ouvre directement une zone par son nom.
+
+La progression est calculée uniquement depuis les observations déjà suivies par BirdingLog (`BL_Totals`) : elle ne prétend pas lire directement le journal natif des prouesses de LOTRO. La fenêtre se rafraîchit immédiatement lorsqu'une nouvelle observation ou un ajout manuel est enregistré.
 
 ### FR7.22 — release consolidée
 

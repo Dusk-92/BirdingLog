@@ -35,6 +35,7 @@ loader716 = read("Dusk/BirdingLog/BL_Loader716.lua")
 main = read("Dusk/BirdingLog/BL_Main.lua")
 runtime716 = read("Dusk/BirdingLog/BL_Runtime716.lua")
 window = read("Dusk/BirdingLog/BL_Window.lua")
+deeds = read("Dusk/BirdingLog/BL_Deeds.lua")
 common = read("Dusk/Common/__init__.lua")
 icon = read("Dusk/BirdingLog/BL_Icon.lua")
 data_en = active_lines(read("Dusk/BirdingLog/BL_Data.lua"))
@@ -171,6 +172,21 @@ if fr_revision >= 22:
         require(title in data_fr, f"FR7.22+ missing current FR Birding title: {title}")
     require((ROOT / "tools/test_persistence.lua").exists(),
             "FR7.22+ persistence regression test is missing")
+
+if fr_revision >= 23:
+    require('import "Dusk.BirdingLog.BL_Deeds"' in main,
+            "FR7.23+ main must load the deed-progress window")
+    require('listzones="Prouesses"' in window and "BL_OpenDeeds" in window,
+            "FR7.23+ main window lost the Prouesses button")
+    require('if args=="deeds" then' in runtime716 and
+            'args:match("^deed%s+(.+)$")' in runtime716,
+            "FR7.23+ runtime lost the deed commands")
+    require("function BL_DeedsWindow:ShowSummary()" in deeds and
+            "function BL_DeedsWindow:ShowZone(code)" in deeds and
+            "BL_DeedsZoneProgress" in deeds,
+            "FR7.23+ deed progress UI is incomplete")
+    require("BL_DeedsReward" in deeds and "reward.ln or reward.n" in deeds,
+            "FR7.23+ deed detail must expose known zone rewards")
 
 # Security regression guard: PluginData decoding must never execute save text.
 for lua_path in ROOT.rglob("*.lua"):
