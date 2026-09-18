@@ -322,8 +322,6 @@ local function BL710_ChatHandler(sender,args)
     if not id then id,name=Dusk.Common.EII_ID(msg) end
     if not id then return end
     name=name or "?"
-    if name:sub(-5)=="Frame" then return end
-
     if BL_ID[id] then
         if BL_Lang=="FR" and name~="?" and (not BL_ID[id].ln or BL_ID[id].ln=="") then
             BL_ID[id].ln=name
@@ -366,8 +364,8 @@ local function BL710_ChatHandler(sender,args)
         return
     end
 
-    if BL_TrackUnknown or BL_TrackHover then
-        BL_PrintE((BL_Lang=="FR" and "Inconnu : " or "Unknown: ")..name..", id="..tostring(id))
+    if BL_TrackUnknown then
+        BL_PrintE((BL_Lang=="FR" and "Objet inconnu : " or "Unknown item: ")..name..", id="..tostring(id))
     end
 end
 
