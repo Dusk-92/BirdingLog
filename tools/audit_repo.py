@@ -32,6 +32,7 @@ readme = read("README.md")
 updates = read("Dusk/BirdingLog/Updates.txt")
 changelog = read("CHANGELOG.md")
 loader716 = read("Dusk/BirdingLog/BL_Loader716.lua")
+legacy_loader = read("Dusk/BirdingLog/BL_Loader.lua")
 main = read("Dusk/BirdingLog/BL_Main.lua")
 runtime716 = read("Dusk/BirdingLog/BL_Runtime716.lua")
 window = read("Dusk/BirdingLog/BL_Window.lua")
@@ -249,6 +250,22 @@ if fr_revision >= 26:
     require("pcall(BL_OpenDeeds)" in window and
             'BL_Command:Execute("bl","zones")' in window,
             "FR7.26+ Prouesses button must have a safe chat fallback")
+
+if fr_revision >= 27:
+    active_runtime = main + "\n" + window + "\n" + runtime716
+    require("BL_TrackHover" not in active_runtime,
+            "FR7.27+ must not restore hover-based unknown-item tracking")
+    require('if name:sub(-5)=="Frame" then return end' not in runtime716,
+            "FR7.27+ must not special-case English Frame loot")
+    require("BL_TrackUnknown or BL_TrackHover" not in legacy_loader,
+            "FR7.27+ legacy loader must not restore hover-based unknown-item tracking")
+    require('if BL_TrackUnknown then' in runtime716,
+            "FR7.27+ unknown-item diagnostics must be gated only by /bl track")
+    require('"Objet inconnu : "' in runtime716 and '"Unknown item: "' in runtime716,
+            "FR7.27+ diagnostic output must identify unknown loot as items")
+    require('track = "Toggle unknown-item diagnostic tracking."' in main and
+            'track = "Activer/désactiver le diagnostic des objets inconnus."' in main,
+            "FR7.27+ help text must describe /bl track as unknown-item diagnostics")
 
 # Security regression guard: PluginData decoding must never execute save text.
 for lua_path in ROOT.rglob("*.lua"):
