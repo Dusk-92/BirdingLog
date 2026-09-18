@@ -179,10 +179,13 @@ function BL_Window:Constructor()
 	self.zonesButton = self:AddField(Button, UI.listzones, {x=195,y=180}, {x=135,y=20} )
 	self.zonesButton.Click = function( sender,args )
         if type(BL_OpenDeeds)=="function" then
-            BL_OpenDeeds()
-        else
-            BL_Command:Execute("bl","zones")
+            local ok,opened=pcall(BL_OpenDeeds)
+            if ok and opened~=false then return end
+            BL_PrintE(BL_Lang=="FR" and
+                "Impossible d’ouvrir la fenêtre Prouesses ; progression affichée dans le chat." or
+                "Unable to open the Deeds window; progress is shown in chat.")
         end
+        BL_Command:Execute("bl","zones")
 	end
 
 	-- Create a sighting listing button
