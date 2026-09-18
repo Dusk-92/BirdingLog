@@ -3,6 +3,23 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.25 — 18 septembre 2026
+
+- Audit global consolidé du runtime, de la détection, des sauvegardes, des données, de l’interface et de la CI.
+- Nouveau `BL_AreaResolver.lua` sans dépendance Turbine pour isoler et tester l’apprentissage des sous-zones.
+- Une tentative d’apprentissage de sous-zone expire après **5 minutes** afin d’éviter d’associer une observation réalisée après un déplacement.
+- Les observations faites pendant une détection inconnue sont mises en tampon puis réinjectées dans `BL_Locs` lorsque la région est identifiée, sans double comptage.
+- Des observations contradictoires annulent l’apprentissage au lieu de conserver un contexte devenu obsolète.
+- Une association apprise peut être corrigée par une nouvelle sélection manuelle après **Détecter zone**.
+- Ajout de `/bl area forget` pour supprimer une association récente et relancer un apprentissage propre.
+- La lecture de la maîtrise d’ornithologie est bornée à **0–200**, ne peut plus faire régresser la valeur et utilise un filtre FR/DE plus strict.
+- La fenêtre **Prouesses** suit l’échelle globale, respecte **Ignorer Échap**, restaure/sauvegarde sa position et emploie un libellé honnête lorsque la récompense n’est pas documentée.
+- Une modification manuelle d’un compteur d’oiseau rafraîchit immédiatement la fenêtre **Prouesses**.
+- Les noms de zone passés à `/bl deed <zone>` sont comparés sans tenir compte des accents.
+- Le README corrompu par un ancien document FR7.21 collé au milieu est réparé.
+- L’audit vérifie désormais qu’un seul README principal existe et que chaque zone contient exactement **16 oiseaux**.
+- Ajout de tests comportementaux Lua pour l’expiration, le buffer, l’intersection d’observations, la correction et l’oubli des alias de sous-zones.
+
 ## 1.3-FR7.24 — 18 septembre 2026
 
 - La détection de zone conserve désormais le couple `région globale + lieu` retourné par `;loc` lorsqu’un paysage utilise des coordonnées différentes des rectangles historiques.
