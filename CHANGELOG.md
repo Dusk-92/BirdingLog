@@ -3,6 +3,16 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+
+## 1.3-FR7.27 — 18 septembre 2026
+
+- Le butin sans lien avec l’ornithologie est désormais ignoré silencieusement en jeu normal : cadres, poissons, armes, objets de quête et autres objets ne génèrent plus de faux messages d’erreur.
+- `/bl track` devient explicitement un mode de diagnostic des objets/IDs inconnus ; les oiseaux et récompenses d’ornithologie connus continuent d’être traités normalement.
+- Suppression de l’ancien filtre anglais basé sur le suffixe `Frame`, devenu inutile et incohérent avec les autres langues.
+- Suppression de `BL_TrackHover` et des événements de survol associés, qui n’avaient plus de rôle dans le runtime.
+- Alignement de l’ancien loader de compatibilité afin qu’il ne puisse pas réintroduire le comportement `BL_TrackUnknown or BL_TrackHover`.
+- L’audit automatique bloque désormais le retour du filtre `Frame`, de `BL_TrackHover` et de l’ancien comportement de suivi.
+
 ## 1.3-FR7.26 — 18 septembre 2026
 
 - Corrige la régression où le bouton **Prouesses** pouvait ne plus afficher sa fenêtre.
