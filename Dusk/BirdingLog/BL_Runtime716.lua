@@ -1,4 +1,4 @@
--- BirdingLog FR7.26 consolidated runtime.
+-- BirdingLog FR7.27 consolidated runtime.
 -- BL_Loader716 performs preflight and constructs BL_Main once; this module is
 -- the single owner of persistence, localization, chat, commands and unload.
 
@@ -8,7 +8,7 @@ import "Dusk.BirdingLog.BL_AreaResolver"
 
 local S=BL716
 if type(S)~="table" or type(S.RawLoad)~="function" or type(S.RawSave)~="function" then
-    error("BirdingLog FR7.16 preflight state is missing")
+    error("BirdingLog consolidated preflight state is missing")
 end
 
 local BL716_SaveBusy=false
@@ -784,8 +784,6 @@ local function BL716_ChatHandler(sender,args)
     local id,name=BL716_DecodeMessage(msg)
     if not id then return end
     name=name or "?"
-    if name:sub(-5)=="Frame" then return end
-
     if BL_ID and BL_ID[id] then
         local learned=false
         if BL_Lang=="FR" and name~="?" and not BL_FR_OfficialIDs[id] then
@@ -840,11 +838,10 @@ local function BL716_ChatHandler(sender,args)
     end
 
     -- Unknown loot is intentionally silent during normal play. Only the explicit
-    -- /bl track diagnostic mode may report unrecognized item IDs. This prevents
-    -- unrelated loot (frames, fish, weapons, quest items, etc.) from producing
-    -- false BirdingLog errors just because the hobby quickslot was hovered.
+    -- /bl track diagnostic mode reports unrecognized item IDs. Known birds and
+    -- known Birding rewards are handled above; every unrelated item is ignored.
     if BL_TrackUnknown then
-        BL_PrintE((BL_Lang=="FR" and "Inconnu : " or "Unknown: ")..name..", id="..tostring(id))
+        BL_PrintE((BL_Lang=="FR" and "Objet inconnu : " or "Unknown item: ")..name..", id="..tostring(id))
     end
 end
 
@@ -1072,8 +1069,8 @@ function BL_Command:Execute(cmd,args)
     if args=="track" then
         BL_TrackUnknown=not BL_TrackUnknown
         BL_Print(BL_Lang=="FR" and
-            (BL_TrackUnknown and "Suivi activé." or "Suivi désactivé.") or
-            ((BL_TrackUnknown and "En" or "Dis").."abled Tracking."))
+            (BL_TrackUnknown and "Suivi des objets inconnus activé." or "Suivi des objets inconnus désactivé.") or
+            (BL_TrackUnknown and "Unknown-item tracking enabled." or "Unknown-item tracking disabled."))
         return
     end
     if args=="deeds" then
@@ -1212,7 +1209,6 @@ Plugins.BirdingLog.Unload=function(sender,args)
     end
 
     BL_CancelLocalization()
-    BL_TrackHover=false
 
     if BL_window and BL_Options then
         local x,y=BL_window:GetPosition()
