@@ -36,6 +36,8 @@ main = read("Dusk/BirdingLog/BL_Main.lua")
 runtime716 = read("Dusk/BirdingLog/BL_Runtime716.lua")
 window = read("Dusk/BirdingLog/BL_Window.lua")
 deeds = read("Dusk/BirdingLog/BL_Deeds.lua")
+area_resolver = read("Dusk/BirdingLog/BL_AreaResolver.lua")
+workflow = read(".github/workflows/audit.yml")
 common = read("Dusk/Common/__init__.lua")
 icon = read("Dusk/BirdingLog/BL_Icon.lua")
 data_en = active_lines(read("Dusk/BirdingLog/BL_Data.lua"))
@@ -52,6 +54,10 @@ fr_match = re.search(r"FR7\.(\d+)$", version)
 fr_revision = int(fr_match.group(1)) if fr_match else 0
 
 require(f"**{version}**" in readme, f"README version does not match {version}")
+require(readme.count("# BirdingLog FR") == 1,
+        "README contains a duplicated/pasted BirdingLog document")
+require(readme.count("## Installation") == 1 and readme.count("## Commandes principales") == 1,
+        "README contains duplicated top-level sections")
 first_update = next((line for line in updates.splitlines() if line.strip()), "")
 require(version in first_update, f"Updates.txt first entry does not match {version}")
 require(f"## {version} " in changelog or f"## {version} —" in changelog,
@@ -191,23 +197,47 @@ if fr_revision >= 23:
 if fr_revision >= 24:
     require('import "Dusk.Common.noAccent"' in runtime716,
             "FR7.24+ runtime must normalize learned area names safely")
-    require('"BL_AreaAliases"' in runtime716 and
-            "BL716_AreaAliases" in runtime716 and
-            "BL716_AreaEvidence" in runtime716,
-            "FR7.24+ learned sub-area persistence/evidence is missing")
+    require('"BL_AreaAliases"' in runtime716 and "BL716_AreaAliases" in runtime716,
+            "FR7.24+ learned sub-area persistence is missing")
     require("function BL_LearnCurrentArea(code)" in runtime716 and
             'type(BL_LearnCurrentArea)=="function"' in window,
             "FR7.24+ manual sub-area teaching is missing")
     require("BL716_LearnAreaFromBird" in runtime716 and
-            "if not BL_LocStr then areaLearned=BL716_LearnAreaFromBird(id) end" in runtime716,
-            "FR7.24+ automatic sub-area learning from sightings is missing")
-    require("BL716_ZoneMatchesRegion" in runtime716 and
-            "BL716_AreaKey" in runtime716,
-            "FR7.24+ learned areas must stay region-scoped")
+            "BL716_ZoneMatchesRegion" in runtime716 and "BL716_AreaKey" in runtime716,
+            "FR7.24+ automatic/region-scoped sub-area learning is missing")
     require("Lieu non reconnu pour l’instant." in runtime716,
             "FR7.24+ unknown-area guidance is missing")
     require("Zone introuvable." not in runtime716,
             "FR7.24+ must not show the obsolete hard failure for unknown sub-areas")
+
+if fr_revision >= 25:
+    require('import "Dusk.BirdingLog.BL_AreaResolver"' in runtime716,
+            "FR7.25+ runtime must use the isolated area resolver")
+    for needle in [
+        "function R.New(", "function R.Buffer(", "function R.AddEvidence(",
+        "function R.Remember(", "function R.ForgetCurrent(", "function R.GetTeachable(",
+    ]:
+        require(needle in area_resolver, f"FR7.25+ area resolver missing {needle}")
+    require("BL716_AreaTTL=300" in runtime716 and "Turbine.Engine.GetGameTime" in runtime716,
+            "FR7.25+ area learning must expire using game time")
+    require("BL716_FlushBufferedSightings" in runtime716 and
+            "BL_AreaResolver.Buffer" in runtime716,
+            "FR7.25+ must buffer and flush unknown-area sightings")
+    require("function BL_ForgetCurrentArea()" in runtime716 and
+            'if args=="area forget" then' in runtime716,
+            "FR7.25+ learned aliases must be forgettable")
+    require("S.Integer(fp,0,200)" in runtime716 and "n>=current" in runtime716,
+            "FR7.25+ Birding proficiency parsing must be bounded and non-decreasing")
+    require("not (BL_Options and BL_Options.esc)" in deeds,
+            "FR7.25+ deeds window must respect Ignore Esc")
+    require('Dusk.Common.Options_Init(BL_Print,BL_Options,BL_window,"BL_Options",BL_deedsWindow)' in main,
+            "FR7.25+ deeds window must share the configured UI scale")
+    require("Non renseignée dans BirdingLog" in deeds,
+            "FR7.25+ deeds UI must not claim an undocumented reward does not exist")
+    require((ROOT / "tools/test_area_resolver.lua").exists(),
+            "FR7.25+ area resolver regression test is missing")
+    require("lua5.1 tools/test_area_resolver.lua" in workflow,
+            "FR7.25+ CI must execute area resolver regression tests")
 
 # Security regression guard: PluginData decoding must never execute save text.
 for lua_path in ROOT.rglob("*.lua"):
@@ -300,9 +330,15 @@ require(gids_en == gids_de,
         f"EN/DE GID sets differ: EN-only={sorted(gids_en-gids_de)}, DE-only={sorted(gids_de-gids_en)}")
 
 for lang, birds, zones in [("EN", birds_en, zones_en), ("DE", birds_de, zones_de)]:
+    zone_bird_counts = {zone: 0 for zone in zones}
     for bird_id, refs in birds.items():
         for zone in refs:
             require(zone in zones, f"{lang} bird {bird_id} references missing zone {zone}")
+        for zone in set(refs):
+            if zone in zone_bird_counts:
+                zone_bird_counts[zone] += 1
+    for zone, count in sorted(zone_bird_counts.items()):
+        require(count == 16, f"{lang} zone {zone} has {count} birds instead of 16")
 
 # Every current bird must have an embedded official FR name. This intentionally
 # fails when SSG adds a bird until the FR table is updated, instead of silently
