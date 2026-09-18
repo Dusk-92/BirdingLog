@@ -1,5 +1,5 @@
 -- Birding Log by David Down
--- FR7.26: construction/data/UI only; BL_Runtime716 owns runtime behavior.
+-- FR7.27: construction/data/UI only; BL_Runtime716 owns runtime behavior.
 
 import "Turbine"
 import "Turbine.Gameplay"
@@ -34,7 +34,6 @@ import "Dusk.Common.Help"
 
 BL_LocStr = false
 BL_TrackUnknown = false
-BL_TrackHover = false
 
 BL_Options = Turbine.PluginData.Load(Turbine.DataScope.Server,"BL_Options")
 if type(BL_Options) ~= "table" then BL_Options = {} end
@@ -85,7 +84,7 @@ BL_Help = {
         [" "] = "Display birding proficiency.",
         ["# <name>"] = "Set count for <name> to #.",
         sight = "List birding sighting records.",
-        track = "Toggle unknown bird tracking.",
+        track = "Toggle unknown-item diagnostic tracking.",
         fr = "Refresh French names from LOTRO.",
         zones = "List birding zones and counts.",
         deeds = "Open the Birding deeds window.",
@@ -112,7 +111,7 @@ if BL_Lang=="FR" then
             [" "] = "Afficher la maîtrise d’ornithologie.",
             ["# <nom>"] = "Définir manuellement le nombre d’observations de <nom>.",
             sight = "Afficher l’historique des observations.",
-            track = "Activer/désactiver le suivi des oiseaux inconnus.",
+            track = "Activer/désactiver le diagnostic des objets inconnus.",
             fr = "Relancer la localisation automatique française.",
             zones = "Afficher les zones et leur progression.",
             deeds = "Ouvrir la fenêtre des prouesses d’ornithologie.",
