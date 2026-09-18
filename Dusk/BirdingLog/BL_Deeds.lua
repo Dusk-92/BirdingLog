@@ -1,8 +1,9 @@
--- BirdingLog FR7.23 deed-progress window.
+-- BirdingLog FR7.25 deed-progress window.
 -- Uses BirdingLog's existing zone -> bird mappings and character totals only;
 -- it does not attempt to read LOTRO's native Deed Log.
 
 import "Turbine.UI.Lotro"
+import "Dusk.Common.noAccent"
 
 local Button = Turbine.UI.Lotro.Button
 local Label = Turbine.UI.Label
@@ -15,8 +16,8 @@ local grey = Turbine.UI.Color(0.72,0.72,0.72)
 local UI = {
     title = "Birding Deeds",
     summary = "Completed zones: ",
-    reward = "Reward: ",
-    noReward = "No known reward",
+    reward = "Known reward: ",
+    noReward = "Not documented in BirdingLog",
     back = "Back",
     close = "Close",
     birds = "Birds seen: ",
@@ -25,8 +26,8 @@ if BL_Lang=="FR" then
     UI = {
         title = "Prouesses d'ornithologie",
         summary = "Zones terminées : ",
-        reward = "Récompense : ",
-        noReward = "Aucune récompense connue",
+        reward = "Récompense connue : ",
+        noReward = "Non renseignée dans BirdingLog",
         back = "Retour",
         close = "Fermer",
         birds = "Oiseaux vus : ",
@@ -35,8 +36,8 @@ elseif BL_Lang=="DE" then
     UI = {
         title = "Vogelbeobachtungs-Taten",
         summary = "Abgeschlossene Gebiete: ",
-        reward = "Belohnung: ",
-        noReward = "Keine bekannte Belohnung",
+        reward = "Bekannte Belohnung: ",
+        noReward = "In BirdingLog nicht dokumentiert",
         back = "Zurück",
         close = "Schließen",
         birds = "Beobachtete Vögel: ",
@@ -120,10 +121,15 @@ function BL_DeedsWindow:Constructor()
     self.selectedZone=nil
 
     local sw,sh=Turbine.UI.Display.GetWidth(),Turbine.UI.Display.GetHeight()
-    self:SetPosition(
-        math.max(0,math.floor((sw-self:GetWidth())/2)),
-        math.max(0,math.floor((sh-self:GetHeight())/2))
-    )
+    local saved=BL_Options and BL_Options.pos2
+    if type(saved)=="table" and tonumber(saved.x) and tonumber(saved.y) then
+        self:SetPosition(tonumber(saved.x),tonumber(saved.y))
+    else
+        self:SetPosition(
+            math.max(0,math.floor((sw-self:GetWidth())/2)),
+            math.max(0,math.floor((sh-self:GetHeight())/2))
+        )
+    end
 
     self.closeButton=Button()
     self.closeButton:SetParent(self)
@@ -140,7 +146,9 @@ function BL_DeedsWindow:Constructor()
         if sender:IsVisible() then sender:Refresh() end
     end
     self.KeyDown=function(sender,args)
-        if args.Action==Turbine.UI.Lotro.Action.Escape then sender:SetVisible(false) end
+        if args.Action==Turbine.UI.Lotro.Action.Escape and not (BL_Options and BL_Options.esc) then
+            sender:SetVisible(false)
+        end
     end
 end
 
@@ -207,8 +215,8 @@ function BL_DeedsWindow:ShowZone(code)
     )
 
     local _,reward=BL_DeedsReward(zone)
-    local rewardName=reward and (reward.ln or reward.n) or UI.noReward
-    self:_Label(UI.reward..rewardName,20,60,495,22,Turbine.UI.ContentAlignment.MiddleLeft,grey)
+    local rewardText=reward and (UI.reward..(reward.ln or reward.n)) or UI.noReward
+    self:_Label(rewardText,20,60,495,22,Turbine.UI.ContentAlignment.MiddleLeft,grey)
 
     local birds={}
     for id in pairs(zone.id or {}) do
@@ -240,16 +248,21 @@ function BL_DeedsWindow:ShowZone(code)
     return true
 end
 
+local function BL_DeedsNormalize(value)
+    local text=tostring(value or ""):gsub("^%s+",""):gsub("%s+$","")
+    if type(noAccent)=="function" then text=noAccent(text) end
+    return string.lower(text)
+end
+
 function BL_DeedsWindow:OpenZoneByName(name)
-    local query=tostring(name or ""):gsub("^%s+",""):gsub("%s+$","")
+    local query=BL_DeedsNormalize(name)
     if query=="" then return false end
-    local lower=string.lower(query)
 
     local matches={}
     for code,zone in pairs(BL_Zone or {}) do
-        local native=tostring(zone.z or "")
-        local localized=tostring(zone.ln or "")
-        if string.lower(native)==lower or (localized~="" and string.lower(localized)==lower) then
+        local native=BL_DeedsNormalize(zone.z)
+        local localized=BL_DeedsNormalize(zone.ln)
+        if native==query or (localized~="" and localized==query) then
             table.insert(matches,code)
         end
     end
@@ -273,6 +286,9 @@ BL_deedsWindow=BL_DeedsWindow()
 
 function BL_OpenDeeds(zoneCode)
     if not BL_deedsWindow then return false end
+    if BL_Options and tonumber(BL_Options.scale) then
+        BL_deedsWindow:SetScale(tonumber(BL_Options.scale))
+    end
     if zoneCode and BL_Zone and BL_Zone[zoneCode] then
         BL_deedsWindow:ShowZone(zoneCode)
     else
