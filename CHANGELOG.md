@@ -3,6 +3,23 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.21 — 18 septembre 2026
+
+- BirdingLog utilise désormais l’appartement Lua dédié `BirdingLog` au lieu de l’appartement partagé `Dusk`.
+- `Dusk/Common` ne remplace plus globalement `Turbine.PluginData.Load/Save`; ses helpers sont locaux au plugin.
+- Les anciennes sauvegardes marquées `# Changelog — BirdingLog FR
+
+Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
+L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
+
+ / `#` sont relues sur tous les clients, avec récupération d’une éventuelle double couche d’encodage.
+- Une clé dont la lecture échoue n’est plus réécrite pendant la session, afin d’éviter une perte de données.
+- La compatibilité Kit est intégrée dans `BL_Runtime716.lua`; `BL_Runtime717.lua` est supprimé.
+- Le rang affiché dans la fenêtre utilise désormais `BL_TitleFR` sur le client français.
+- Le niveau est rafraîchi directement lors du gain de maîtrise ; le polling `Update` permanent est supprimé.
+- L’ajout manuel d’un oiseau déclenche directement la sauvegarde, sans dépendre du texte imprimé.
+- Le préflight utilise désormais la vraie taille de fenêtre `360x295` et nettoie les effets de `BL_Main` si le runtime moderne échoue à charger.
+
 ## 1.3-FR7.20 — 17 septembre 2026
 
 - La fenêtre principale passe de `340x275` à `360x295` pour mieux respirer autour de la ligne de maîtrise ajoutée en FR7.19.
