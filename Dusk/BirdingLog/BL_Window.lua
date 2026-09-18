@@ -115,8 +115,6 @@ function BL_Window:Constructor()
 	self.fish = self:AddField(Quickslot, nil, {x=285,y=50}, {x=Qsize,y=Qsize} )
 	self.fish:SetShortcut( Shortcut(Hobby,"0x7006B1F4") )
     self.fish:SetAllowDrop( false )
-	self.fish.MouseEnter = function( sender, args ) BL_TrackHover = true end
-	self.fish.MouseLeave = function( sender, args ) BL_TrackHover = false end
 
 	-- Create a weapon label
 	self:AddField(Label, UI.weapon, {x=50,y=107}, {x=70,y=16} )
