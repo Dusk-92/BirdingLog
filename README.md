@@ -4,7 +4,7 @@ Carnet d’ornithologie pour **The Lord of the Rings Online**, avec suivi des ob
 
 **🌍 Langues / Languages / Sprachen :** 🇫🇷 Français · 🇬🇧 English · 🇩🇪 Deutsch
 
-**Version actuelle : 1.3-FR7.27**
+Version actuelle : **1.3-FR7.27**
 
 ---
 
