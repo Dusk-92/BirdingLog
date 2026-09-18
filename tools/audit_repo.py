@@ -230,14 +230,25 @@ if fr_revision >= 25:
             "FR7.25+ Birding proficiency parsing must be bounded and non-decreasing")
     require("not (BL_Options and BL_Options.esc)" in deeds,
             "FR7.25+ deeds window must respect Ignore Esc")
-    require('Dusk.Common.Options_Init(BL_Print,BL_Options,BL_window,"BL_Options",BL_deedsWindow)' in main,
-            "FR7.25+ deeds window must share the configured UI scale")
     require("Non renseignée dans BirdingLog" in deeds,
             "FR7.25+ deeds UI must not claim an undocumented reward does not exist")
     require((ROOT / "tools/test_area_resolver.lua").exists(),
             "FR7.25+ area resolver regression test is missing")
     require("lua5.1 tools/test_area_resolver.lua" in workflow,
             "FR7.25+ CI must execute area resolver regression tests")
+
+if fr_revision >= 26:
+    require('Dusk.Common.Options_Init(BL_Print,BL_Options,BL_window,"BL_Options")' in main,
+            "FR7.26+ Prouesses must stay independent from main-window scaling")
+    require('Dusk.Common.Options_Init(BL_Print,BL_Options,BL_window,"BL_Options",BL_deedsWindow)' not in main,
+            "FR7.26+ must not route Prouesses through Window2 scaling")
+    require("BL_deedsWindow:SetScale" not in deeds and "BL_Options.pos2" not in deeds,
+            "FR7.26+ Prouesses must use the proven autonomous FR7.24 opening path")
+    require("BL_Options.pos2" not in runtime716,
+            "FR7.26+ runtime must not persist the retired Prouesses pos2 state")
+    require("pcall(BL_OpenDeeds)" in window and
+            'BL_Command:Execute("bl","zones")' in window,
+            "FR7.26+ Prouesses button must have a safe chat fallback")
 
 # Security regression guard: PluginData decoding must never execute save text.
 for lua_path in ROOT.rglob("*.lua"):
