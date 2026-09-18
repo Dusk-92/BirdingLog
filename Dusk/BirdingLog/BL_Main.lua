@@ -1,5 +1,5 @@
 -- Birding Log by David Down
--- FR7.23: construction/data/UI only; BL_Runtime716 owns runtime behavior.
+-- FR7.25: construction/data/UI only; BL_Runtime716 owns runtime behavior.
 
 import "Turbine"
 import "Turbine.Gameplay"
@@ -76,7 +76,7 @@ end
 
 import "Dusk.Common.Options"
 if not BL_Options.scale then BL_Options.scale = 1 end
-BL_OP = Dusk.Common.Options_Init(BL_Print,BL_Options,BL_window,"BL_Options")
+BL_OP = Dusk.Common.Options_Init(BL_Print,BL_Options,BL_window,"BL_Options",BL_deedsWindow)
 
 BL_Help = {
     pre = "bl",
@@ -90,6 +90,7 @@ BL_Help = {
         zones = "List birding zones and counts.",
         deeds = "Open the Birding deeds window.",
         ["deed <zone>"] = "Open deed details for a Birding zone.",
+        ["area forget"] = "Forget the most recent learned sub-area mapping.",
     },
     cmd = {
         bll = {
@@ -116,6 +117,7 @@ if BL_Lang=="FR" then
             zones = "Afficher les zones et leur progression.",
             deeds = "Ouvrir la fenêtre des prouesses d’ornithologie.",
             ["deed <zone>"] = "Ouvrir le détail de la prouesse d’une zone.",
+            ["area forget"] = "Oublier l’association de sous-zone la plus récente.",
         },
         cmd = {
             bll = {
