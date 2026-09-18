@@ -1,4 +1,4 @@
--- BirdingLog FR7.22 consolidated loader.
+-- BirdingLog FR7.24 consolidated loader.
 -- One active entry point: sanitize persistent data, construct the UI/core once,
 -- then hand all runtime ownership to BL_Runtime716.
 

@@ -3,6 +3,16 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.24 — 18 septembre 2026
+
+- La détection de zone conserve désormais le couple `région globale + lieu` retourné par `;loc` lorsqu’un paysage utilise des coordonnées différentes des rectangles historiques.
+- Ajout d’un cache serveur `BL_AreaAliases` pour mémoriser les sous-zones déjà rattachées à une région d’ornithologie.
+- Une zone inconnue peut être apprise automatiquement après une ou plusieurs observations d’oiseaux lorsque l’intersection des zones possibles devient unique.
+- Une sélection manuelle effectuée juste après un échec de détection mémorise également la sous-zone pour les prochaines sessions.
+- Les sous-zones apprises restent filtrées par grande région afin d’éviter les rattachements impossibles.
+- Le message `Zone introuvable` est remplacé par une indication expliquant l’apprentissage automatique ou la validation manuelle.
+- Les donjons/raids inconnus ne sont pas automatiquement forcés dans une zone d’ornithologie : sans observation compatible ni sélection manuelle, aucun alias n’est enregistré.
+
 ## 1.3-FR7.23 — 18 septembre 2026
 
 - Ajout d’une fenêtre dédiée **Prouesses d’ornithologie** accessible depuis la fenêtre principale.

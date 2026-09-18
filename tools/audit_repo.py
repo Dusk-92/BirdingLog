@@ -188,6 +188,27 @@ if fr_revision >= 23:
     require("BL_DeedsReward" in deeds and "reward.ln or reward.n" in deeds,
             "FR7.23+ deed detail must expose known zone rewards")
 
+if fr_revision >= 24:
+    require('import "Dusk.Common.noAccent"' in runtime716,
+            "FR7.24+ runtime must normalize learned area names safely")
+    require('"BL_AreaAliases"' in runtime716 and
+            "BL716_AreaAliases" in runtime716 and
+            "BL716_AreaEvidence" in runtime716,
+            "FR7.24+ learned sub-area persistence/evidence is missing")
+    require("function BL_LearnCurrentArea(code)" in runtime716 and
+            'type(BL_LearnCurrentArea)=="function"' in window,
+            "FR7.24+ manual sub-area teaching is missing")
+    require("BL716_LearnAreaFromBird" in runtime716 and
+            "if not BL_LocStr then areaLearned=BL716_LearnAreaFromBird(id) end" in runtime716,
+            "FR7.24+ automatic sub-area learning from sightings is missing")
+    require("BL716_ZoneMatchesRegion" in runtime716 and
+            "BL716_AreaKey" in runtime716,
+            "FR7.24+ learned areas must stay region-scoped")
+    require("Lieu non reconnu pour l’instant." in runtime716,
+            "FR7.24+ unknown-area guidance is missing")
+    require("Zone introuvable." not in runtime716,
+            "FR7.24+ must not show the obsolete hard failure for unknown sub-areas")
+
 # Security regression guard: PluginData decoding must never execute save text.
 for lua_path in ROOT.rglob("*.lua"):
     text = lua_path.read_text(encoding="utf-8")

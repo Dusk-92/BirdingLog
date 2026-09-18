@@ -163,6 +163,7 @@ function BL_Window:Constructor()
 		BL_LocStr = BL_Zname[args]
 		if not BL_Locs[BL_LocStr] then BL_Locs[BL_LocStr] = {} end
 		BL_Print(BL_Lang=="FR" and ("Zone sélectionnée : "..args) or ("Selected zone: "..args))
+        if type(BL_LearnCurrentArea)=="function" then BL_LearnCurrentArea(BL_LocStr) end
 	end
 	self.zoneMenu.Menu.Click = function()
 		self.zoneMenu:BuildMenu(BL_Zlist,action,nil,function() end)

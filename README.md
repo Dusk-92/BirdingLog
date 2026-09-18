@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.23**
+- Version du fork : **1.3-FR7.24**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -16,6 +16,7 @@ Cette version conserve l'interface et les données historiques de Birding Log to
 - suivi des observations indépendant de la langue du nom d'objet ;
 - coordonnées FR avec virgule décimale et `O` pour Ouest ;
 - détection de zone déterministe lorsque plusieurs rectangles se chevauchent ;
+- mémorisation des sous-zones extérieures que les coordonnées historiques ne reconnaissent pas ;
 - caches séparés pour les noms d'oiseaux et d'objets appris dynamiquement ;
 - Quickslots sauvegardés vérifiés contre les rejets silencieux de Turbine ;
 - récupération automatique d'un raccourci temporairement indisponible ;
@@ -68,7 +69,14 @@ Dans LOTRO, actualiser le gestionnaire de plugins puis charger **BirdingLog**.
 /blg            Afficher la récompense de la zone sélectionnée
 ```
 
-Le bouton **Détecter zone** utilise la commande LOTRO `;loc` (ou son équivalent localisé) et les coordonnées connues par BirdingLog. Les frontières réelles de certaines zones ne sont pas parfaitement rectangulaires : le menu manuel reste disponible pour corriger un cas de frontière exceptionnel.
+Le bouton **Détecter zone** utilise la commande LOTRO `;loc` (ou son équivalent localisé) et les coordonnées connues par BirdingLog.
+
+Depuis **FR7.24**, lorsqu’un lieu utilise une autre carte ou un autre repère de coordonnées et ne peut pas être rattaché immédiatement à l’une des 33 zones d’ornithologie, BirdingLog conserve le nom du lieu et peut apprendre son rattachement de deux façons :
+
+- automatiquement, lorsqu’une ou plusieurs observations d’oiseaux permettent d’identifier sans ambiguïté la zone d’ornithologie ;
+- manuellement, en sélectionnant une seule fois la bonne zone dans le menu après l’échec de détection.
+
+L’association est ensuite sauvegardée côté serveur dans `BL_AreaAliases` et réutilisée lors des prochains passages. Les lieux inconnus ne sont donc pas arbitrairement rattachés à une zone : un donjon/raid où le loisir ne produit aucune observation ne sera pas appris automatiquement.
 
 ## Architecture FR7.16+
 
@@ -98,6 +106,14 @@ Le runtime FR7.16 possède un seul propriétaire pour :
 **FR7.19** ajoute dans la fenêtre principale une ligne de maîtrise du type `Ornithologie : niveau 28 — Bird-brained`. Le meilleur rang atteint est calculé depuis les paliers `BL_Title`. Tant que la fenêtre est visible, l'affichage est rafraîchi automatiquement si la maîtrise change ; si elle était fermée au moment du gain, la nouvelle valeur apparaît dès sa prochaine ouverture.
 
 **FR7.20** agrandit légèrement la fenêtre principale de `340x275` à `360x295` et redistribue les contrôles pour laisser davantage d'espace autour de la maîtrise et des deux rangées d'équipement, sans modifier leur fonctionnement.
+
+### FR7.24 — sous-zones extérieures apprises
+
+FR7.24 complète la détection par rectangles avec un résolveur de sous-zones. Lorsqu’un paysage extérieur utilise des coordonnées différentes de celles de la région historique — par exemple une carte alternative — BirdingLog peut désormais mémoriser le couple `région globale + lieu` et le rattacher à la bonne zone d’ornithologie.
+
+Si la zone est inconnue, BirdingLog n’affiche plus une erreur sèche. Il attend soit une observation suffisamment distinctive pour déduire automatiquement la zone à partir de la base des oiseaux, soit une sélection manuelle unique dans le menu. Une fois apprise, la sous-zone est restaurée automatiquement aux sessions suivantes.
+
+Cette logique ne force pas les donjons et raids dans une région d’ornithologie : sans observation compatible ou validation manuelle, ils restent non associés.
 
 ### FR7.23 — suivi des prouesses
 

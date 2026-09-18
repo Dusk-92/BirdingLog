@@ -1,8 +1,9 @@
--- BirdingLog FR7.23 consolidated runtime.
+-- BirdingLog FR7.24 consolidated runtime.
 -- BL_Loader716 performs preflight and constructs BL_Main once; this module is
 -- the single owner of persistence, localization, chat, commands and unload.
 
 import "Turbine.UI.Lotro"
+import "Dusk.Common.noAccent"
 
 local S=BL716
 if type(S)~="table" or type(S.RawLoad)~="function" or type(S.RawSave)~="function" then
@@ -23,8 +24,43 @@ local BL716_DeferredRefresh=false
 local BL716_ShortcutGuard=false
 local BL716_Unloading=false
 local BL716_CommandRegistered=false
+local BL716_AreaAliases={}
+local BL716_AreaEvidence={}
+local BL716_CurrentArea=nil
+local BL716_PendingArea=nil
 
 local BL716_SaveRuntimeData
+
+local function BL716_NormalizeText(value)
+    local text=tostring(value or ""):gsub("^%s+",""):gsub("%s+$","")
+    if type(noAccent)=="function" then text=noAccent(text) end
+    return string.lower(text)
+end
+
+local function BL716_AreaKey(regionName,areaName)
+    local region=BL716_NormalizeText(regionName)
+    local area=BL716_NormalizeText(areaName)
+    if region=="" or area=="" then return nil end
+    return region.."|"..area
+end
+
+local function BL716_ZoneMatchesRegion(code,regionIndex)
+    local zone=BL_Zone and BL_Zone[code]
+    if not zone then return false end
+    return regionIndex==zone.r or (regionIndex==4 and zone.r==3)
+end
+
+do
+    local loaded=S.Load(Turbine.DataScope.Server,"BL_AreaAliases")
+    loaded=S.ValidateTableRoot("BL_AreaAliases",loaded)
+    if type(loaded)=="table" then
+        for key,code in pairs(loaded) do
+            if type(key)=="string" and type(code)=="string" and BL_Zone and BL_Zone[code] then
+                BL716_AreaAliases[key]=code
+            end
+        end
+    end
+end
 
 -- ---------------------------------------------------------------------------
 -- Async PluginData persistence
@@ -77,6 +113,7 @@ local function BL716_RuntimeSaveItems()
     add(Turbine.DataScope.Server,"BL_Locs",BL_Locs)
     add(Turbine.DataScope.Server,"BL_Names",BL_Names)
     add(Turbine.DataScope.Server,"BL_GNames",BL_GNames)
+    add(Turbine.DataScope.Server,"BL_AreaAliases",BL716_AreaAliases)
     add(Turbine.DataScope.Character,"BL_Totals",BL_Totals)
     add(Turbine.DataScope.Character,"BL_PendingShortcuts",S.PendingShortcuts)
     return items
@@ -567,6 +604,93 @@ function BL_AutoLocalize(force)
 end
 
 -- ---------------------------------------------------------------------------
+-- Outdoor sub-area resolver
+-- ---------------------------------------------------------------------------
+
+local function BL716_ActivateZone(code,messagePrefix)
+    local zone=BL_Zone and BL_Zone[code]
+    if not zone then return false end
+    BL_LocStr=code
+    if type(BL_Locs[code])~="table" then BL_Locs[code]={} end
+    if BL_window and BL_window.zoneMenu then
+        BL_window.zoneMenu:SetText(zone.ln or zone.z)
+    end
+    if messagePrefix then BL_Print(messagePrefix..(zone.ln or zone.z)) end
+    return true
+end
+
+local function BL716_RememberArea(context,code,announce,deferSave)
+    if type(context)~="table" or not context.key or not BL_Zone or not BL_Zone[code] then return false end
+    if not BL716_ZoneMatchesRegion(code,context.regionIndex) then return false end
+
+    local changed=BL716_AreaAliases[context.key]~=code
+    BL716_AreaAliases[context.key]=code
+    BL716_AreaEvidence[context.key]=nil
+    if BL716_PendingArea and BL716_PendingArea.key==context.key then BL716_PendingArea=nil end
+
+    if changed then
+        if announce then
+            BL_Print((BL_Lang=="FR" and "Sous-zone mémorisée pour " or "Sub-area remembered for ")..
+                (BL_Zone[code].ln or BL_Zone[code].z)..".")
+        end
+        if not deferSave then BL716_SaveRuntimeData() end
+    end
+    return changed
+end
+
+function BL_LearnCurrentArea(code)
+    local context=BL716_PendingArea
+    if not context then return false end
+    if not BL716_RememberArea(context,code,true,false) then return false end
+    return true
+end
+
+local function BL716_LearnAreaFromBird(id)
+    local context=BL716_PendingArea
+    if BL_LocStr or type(context)~="table" or not context.key then return false end
+    local bird=BL_ID and BL_ID[id]
+    if not bird or type(bird.f)~="table" then return false end
+
+    local candidates={}
+    for _,code in ipairs(bird.f) do
+        if BL716_ZoneMatchesRegion(code,context.regionIndex) then candidates[code]=true end
+    end
+
+    local evidence=BL716_AreaEvidence[context.key]
+    if evidence then
+        local intersection={}
+        for code in pairs(evidence) do
+            if candidates[code] then intersection[code]=true end
+        end
+        local any=false
+        for _ in pairs(intersection) do any=true break end
+        if not any then
+            BL716_AreaEvidence[context.key]=nil
+            return false
+        end
+        evidence=intersection
+    else
+        evidence=candidates
+    end
+    BL716_AreaEvidence[context.key]=evidence
+
+    local count,last=0,nil
+    for code in pairs(evidence) do
+        count=count+1
+        last=code
+    end
+    if count~=1 or not last then return false end
+
+    BL716_ActivateZone(
+        last,
+        BL_Lang=="FR" and "Zone d’ornithologie reconnue automatiquement : " or
+            "Birding zone learned automatically: "
+    )
+    BL716_RememberArea(context,last,false,true)
+    return true
+end
+
+-- ---------------------------------------------------------------------------
 -- Chat -- exactly one active BirdingLog owner
 -- ---------------------------------------------------------------------------
 
@@ -640,6 +764,9 @@ local function BL716_ChatHandler(sender,args)
             (BL_Lang=="FR" and ", total=" or ", count=")..BL_Totals[id])
         if BL_deedsWindow and BL_deedsWindow:IsVisible() then BL_deedsWindow:Refresh() end
 
+        local areaLearned=false
+        if not BL_LocStr then areaLearned=BL716_LearnAreaFromBird(id) end
+
         if BL_LocStr then
             local loc=BL_Locs[BL_LocStr]
             if type(loc)~="table" then loc={} BL_Locs[BL_LocStr]=loc end
@@ -647,7 +774,7 @@ local function BL716_ChatHandler(sender,args)
         end
 
         BL716_ObservationsSinceSave=BL716_ObservationsSinceSave+1
-        if learned or BL716_SaveRetryPending or BL716_ObservationsSinceSave>=10 then
+        if learned or areaLearned or BL716_SaveRetryPending or BL716_ObservationsSinceSave>=10 then
             BL716_SaveRuntimeData()
         end
         return
@@ -777,12 +904,31 @@ function BL_Command:Execute(cmd,args)
         end
 
         BL_LocStr=nil
+        BL716_PendingArea=nil
         local zc,zn,bestScore,bestArea
         local areaName=tostring(area or ""):gsub("^%s+",""):gsub("%s+$","")
-        local direct=BL_Zname[areaName]
-        if direct and BL_Zone[direct] then
-            local z=BL_Zone[direct]
-            if r==z.r or (r==4 and z.r==3) then zc,zn=direct,z.z end
+        local areaKey=BL716_AreaKey(reg,areaName)
+        BL716_CurrentArea={
+            key=areaKey,
+            region=reg,
+            area=areaName,
+            regionIndex=r,
+        }
+
+        local remembered=areaKey and BL716_AreaAliases[areaKey]
+        if remembered and BL716_ZoneMatchesRegion(remembered,r) then
+            zc=remembered
+            zn=BL_Zone[remembered].z
+        elseif remembered then
+            BL716_AreaAliases[areaKey]=nil
+        end
+
+        if not zc then
+            local direct=BL_Zname[areaName]
+            if direct and BL_Zone[direct] then
+                local z=BL_Zone[direct]
+                if r==z.r or (r==4 and z.r==3) then zc,zn=direct,z.z end
+            end
         end
 
         if not zc then
@@ -804,12 +950,12 @@ function BL_Command:Execute(cmd,args)
         end
 
         if zn then
-            BL_LocStr=zc
-            if type(BL_Locs[zc])~="table" then BL_Locs[zc]={} end
-            BL_window.zoneMenu:SetText(BL_Zone[zc].ln or BL_Zone[zc].z)
-            BL_Print((BL_Lang=="FR" and "Zone : " or "Zone: ")..(BL_Zone[zc].ln or zn))
+            BL716_ActivateZone(zc,BL_Lang=="FR" and "Zone : " or "Zone: ")
         else
-            BL_PrintE(BL_Lang=="FR" and "Zone introuvable." or "Zone not found.")
+            BL716_PendingArea=BL716_CurrentArea
+            BL_Print(BL_Lang=="FR" and
+                "Lieu non reconnu pour l’instant. Si l’ornithologie fonctionne ici, BirdingLog apprendra automatiquement la région dès qu’une observation permettra de l’identifier. Tu peux aussi choisir la région une fois dans le menu." or
+                "Location not recognized yet. If Birding works here, BirdingLog will learn the region automatically once a sighting identifies it. You can also choose the region once from the menu.")
         end
         return
     end
@@ -1032,6 +1178,7 @@ Plugins.BirdingLog.Unload=function(sender,args)
 
     BL_SaveRuntimeData=nil
     BL_SaveOptions=nil
+    BL_LearnCurrentArea=nil
     BL_IsLocalizationBusy=nil
     BL_CancelLocalization=nil
 end
