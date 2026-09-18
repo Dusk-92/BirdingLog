@@ -1,5 +1,5 @@
 -- Birding Log by David Down
--- FR7.25: construction/data/UI only; BL_Runtime716 owns runtime behavior.
+-- FR7.26: construction/data/UI only; BL_Runtime716 owns runtime behavior.
 
 import "Turbine"
 import "Turbine.Gameplay"
@@ -76,7 +76,7 @@ end
 
 import "Dusk.Common.Options"
 if not BL_Options.scale then BL_Options.scale = 1 end
-BL_OP = Dusk.Common.Options_Init(BL_Print,BL_Options,BL_window,"BL_Options",BL_deedsWindow)
+BL_OP = Dusk.Common.Options_Init(BL_Print,BL_Options,BL_window,"BL_Options")
 
 BL_Help = {
     pre = "bl",

@@ -1,4 +1,4 @@
--- BirdingLog FR7.25 deed-progress window.
+-- BirdingLog FR7.26 deed-progress window.
 -- Uses BirdingLog's existing zone -> bird mappings and character totals only;
 -- it does not attempt to read LOTRO's native Deed Log.
 
@@ -120,22 +120,13 @@ function BL_DeedsWindow:Constructor()
     self.mode="summary"
     self.selectedZone=nil
 
+    -- Keep this secondary window independent from the main-window scale/pos
+    -- machinery. This is the proven FR7.23/FR7.24 behavior in LOTRO.
     local sw,sh=Turbine.UI.Display.GetWidth(),Turbine.UI.Display.GetHeight()
-    local saved=BL_Options and BL_Options.pos2
-    local scale=(BL_Options and tonumber(BL_Options.scale)) or 1
-    local maxX=math.max(0,sw-math.floor(self:GetWidth()*scale+0.5))
-    local maxY=math.max(0,sh-math.floor(self:GetHeight()*scale+0.5))
-    if type(saved)=="table" and tonumber(saved.x) and tonumber(saved.y) then
-        self:SetPosition(
-            math.max(0,math.min(tonumber(saved.x),maxX)),
-            math.max(0,math.min(tonumber(saved.y),maxY))
-        )
-    else
-        self:SetPosition(
-            math.max(0,math.floor(maxX/2)),
-            math.max(0,math.floor(maxY/2))
-        )
-    end
+    self:SetPosition(
+        math.max(0,math.floor((sw-self:GetWidth())/2)),
+        math.max(0,math.floor((sh-self:GetHeight())/2))
+    )
 
     self.closeButton=Button()
     self.closeButton:SetParent(self)
@@ -292,9 +283,6 @@ BL_deedsWindow=BL_DeedsWindow()
 
 function BL_OpenDeeds(zoneCode)
     if not BL_deedsWindow then return false end
-    if BL_Options and tonumber(BL_Options.scale) then
-        BL_deedsWindow:SetScale(tonumber(BL_Options.scale))
-    end
     if zoneCode and BL_Zone and BL_Zone[zoneCode] then
         BL_deedsWindow:ShowZone(zoneCode)
     else

@@ -3,6 +3,15 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.26 — 18 septembre 2026
+
+- Corrige la régression où le bouton **Prouesses** pouvait ne plus afficher sa fenêtre.
+- Retour au chemin d’ouverture autonome validé en FR7.23/FR7.24 : la fenêtre Prouesses n’est plus injectée dans le mécanisme d’échelle/position secondaire `pos2`.
+- Suppression du `SetScale` appliqué au moment de l’ouverture de la fenêtre Prouesses.
+- La fenêtre est de nouveau centrée indépendamment de la fenêtre principale.
+- Le bouton **Prouesses** utilise désormais un `pcall` : si LOTRO refuse malgré tout l’ouverture, la progression par zone est affichée dans le chat au lieu d’un bouton silencieux.
+- L’audit interdit le retour de `Window2`, `pos2` et du `SetScale` sur ce chemin d’ouverture.
+
 ## 1.3-FR7.25 — 18 septembre 2026
 
 - Audit global consolidé du runtime, de la détection, des sauvegardes, des données, de l’interface et de la CI.
