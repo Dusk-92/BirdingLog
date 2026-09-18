@@ -61,7 +61,7 @@ local function BL_ProficiencyText()
 		local n = tonumber(level)
 		if n and fp>=n and n>bestLevel then
 			bestLevel = n
-			bestTitle = title
+			bestTitle = (BL_Lang=="FR" and BL_TitleFR and BL_TitleFR[n]) or title
 		end
 	end
 
@@ -130,15 +130,6 @@ function BL_Window:Constructor()
 	self.proficiency:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleCenter )
 	self:RefreshProficiency()
 
-	-- Keep the label live while the window is visible. If proficiency changes while
-	-- hidden, it is refreshed on the first update after the window is shown again.
-	self:SetWantsUpdates( true )
-	self.Update = function(sender,args)
-		if not sender:IsVisible() then return end
-		local fp = tonumber(BL_Totals and BL_Totals.fp)
-		if fp ~= sender._lastProficiency then sender:RefreshProficiency() end
-	end
-
 -- Hobby:Birding action is Type=Hobby(9), Data=0x7000EE1E
 
 	-- Create a Name field
@@ -151,7 +142,7 @@ function BL_Window:Constructor()
 	if BL_Totals.kit then self.kit:SetShortcut( Shortcut(Item,BL_Totals.kit) ) 
 	else self.kit:SetBackground("Dusk/BirdingLog/Kit.tga") end
 	self.kit.ShortcutChanged = function( sender, args )
-		BL_Totals.kit = BL_Shortcut(sender,BL_Lang=="FR" and "Kit d’ornithologie" or "Birding Kit",nil,BL_BirdingKit)
+		BL_Totals.kit = BL_Shortcut(sender,BL_Lang=="FR" and "Kit d’ornithologie" or "Birding Kit")
 	end
 
 	-- Create a birding label
@@ -265,6 +256,7 @@ function BL_Window:Constructor()
 		end
 		locTbl[id] = (locTbl[id] or 0)+1
 		BL_Print(BL_Lang=="FR" and ("Observation ajoutée : "..(BL_ID[id].ln or BL_ID[id].n)) or ("Added "..(BL_ID[id].ln or BL_ID[id].n).." sighting"))
+		if type(BL_SaveRuntimeData)=="function" then BL_SaveRuntimeData() end
 	end
 	self.birdMenu.Menu.Click = function()
 		if BL_LocStr then
