@@ -1,4 +1,4 @@
--- BirdingLog FR7.26 deed-progress window.
+-- BirdingLog FR7.27 deed-progress window.
 -- Uses BirdingLog's existing zone -> bird mappings and character totals only;
 -- it does not attempt to read LOTRO's native Deed Log.
 
