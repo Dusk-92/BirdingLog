@@ -3,9 +3,9 @@
   <Information>
 	<Name>BirdingLog</Name>
 	<Author>David Down / Dusk-92</Author>
-	<Version>1.3-FR7.26</Version>
+	<Version>1.3-FR7.27</Version>
 	<Image>Dusk/BirdingLog/Bird.tga</Image>
-	<Description>FR7.26 : correctif d’ouverture de la fenêtre Prouesses, retour au chemin d’affichage autonome validé FR7.24.</Description>
+	<Description>FR7.27 : ignore silencieusement le butin sans lien avec l’ornithologie et réserve /bl track au diagnostic des objets inconnus.</Description>
 	<website>https://github.com/Dusk-92/BirdingLog</website>
   </Information>
   <Package>Dusk.BirdingLog.BL_Loader716</Package>
