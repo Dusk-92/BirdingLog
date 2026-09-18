@@ -953,8 +953,8 @@ function BL_Command:Execute(cmd,args)
         else
             BL716_PendingArea=BL716_CurrentArea
             BL_Print(BL_Lang=="FR" and
-                "Sous-zone extérieure non reconnue. Si l’ornithologie fonctionne ici, BirdingLog apprendra automatiquement la région dès qu’une observation permettra de l’identifier. Tu peux aussi choisir la région une fois dans le menu." or
-                "Unknown outdoor sub-area. If Birding works here, BirdingLog will learn the region automatically once a sighting identifies it. You can also choose the region once from the menu.")
+                "Lieu non reconnu pour l’instant. Si l’ornithologie fonctionne ici, BirdingLog apprendra automatiquement la région dès qu’une observation permettra de l’identifier. Tu peux aussi choisir la région une fois dans le menu." or
+                "Location not recognized yet. If Birding works here, BirdingLog will learn the region automatically once a sighting identifies it. You can also choose the region once from the menu.")
         end
         return
     end
