@@ -55,10 +55,17 @@ fr_match = re.search(r"FR7\.(\d+)$", version)
 fr_revision = int(fr_match.group(1)) if fr_match else 0
 
 require(f"**{version}**" in readme, f"README version does not match {version}")
-require(readme.count("# BirdingLog FR") == 1,
-        "README contains a duplicated/pasted BirdingLog document")
-require(readme.count("## Installation") == 1 and readme.count("## Commandes principales") == 1,
-        "README contains duplicated top-level sections")
+readme_lines = readme.splitlines()
+require(readme_lines.count("# 🐦 BirdingLog") == 1,
+        "README must contain exactly one main BirdingLog title")
+for heading in ["## 🇫🇷 Français", "## 🇬🇧 English", "## 🇩🇪 Deutsch"]:
+    require(readme_lines.count(heading) == 1,
+            f"README must contain exactly one {heading} section")
+require(readme_lines.count("### 📦 Installation") == 3,
+        "README must contain one Installation section per language")
+for heading in ["### ⌨️ Commandes", "### ⌨️ Commands", "### ⌨️ Befehle"]:
+    require(readme_lines.count(heading) == 1,
+            f"README must contain exactly one {heading} section")
 first_update = next((line for line in updates.splitlines() if line.strip()), "")
 require(version in first_update, f"Updates.txt first entry does not match {version}")
 require(f"## {version} " in changelog or f"## {version} —" in changelog,
