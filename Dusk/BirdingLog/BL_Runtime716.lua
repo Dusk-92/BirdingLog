@@ -1,4 +1,4 @@
--- BirdingLog FR7.22 consolidated runtime.
+-- BirdingLog FR7.23 consolidated runtime.
 -- BL_Loader716 performs preflight and constructs BL_Main once; this module is
 -- the single owner of persistence, localization, chat, commands and unload.
 
@@ -638,6 +638,7 @@ local function BL716_ChatHandler(sender,args)
         BL_Totals[id]=before+1
         BL_Print((BL_Lang=="FR" and "Observation : " or "Saw a ")..(BL_ID[id].ln or BL_ID[id].n)..
             (BL_Lang=="FR" and ", total=" or ", count=")..BL_Totals[id])
+        if BL_deedsWindow and BL_deedsWindow:IsVisible() then BL_deedsWindow:Refresh() end
 
         if BL_LocStr then
             local loc=BL_Locs[BL_LocStr]
@@ -864,6 +865,21 @@ function BL_Command:Execute(cmd,args)
             ((BL_TrackUnknown and "En" or "Dis").."abled Tracking."))
         return
     end
+    if args=="deeds" then
+        if type(BL_OpenDeeds)=="function" then BL_OpenDeeds() end
+        return
+    end
+    if args=="deed" then
+        if type(BL_OpenDeeds)=="function" then BL_OpenDeeds(BL_LocStr) end
+        return
+    end
+    local deedZone=args:match("^deed%s+(.+)$")
+    if deedZone then
+        if type(BL_OpenDeedByName)~="function" or not BL_OpenDeedByName(deedZone) then
+            BL_PrintE((BL_Lang=="FR" and "Zone de prouesse introuvable : " or "Deed zone not found: ")..deedZone)
+        end
+        return
+    end
     if args=="zones" then
         BL_PrintH(BL_Lang=="FR" and "Oiseaux trouvés par zone :" or "Birds found by zone:")
         for _,zt in Sort(BL_Zone) do
@@ -1005,6 +1021,7 @@ Plugins.BirdingLog.Unload=function(sender,args)
         BL_window:SetWantsUpdates(false)
         BL_window:SetVisible(false)
     end
+    if BL_deedsWindow then BL_deedsWindow:SetVisible(false) end
     if BL_IconWindow then BL_IconWindow:SetVisible(false) end
     if BL716_CommandRegistered then
         pcall(function() Turbine.Shell.RemoveCommand(BL_Command) end)
