@@ -19,7 +19,6 @@ local Alias = Turbine.UI.Lotro.ShortcutType.Alias
 local Shortcut = Turbine.UI.Lotro.Shortcut
 local Quickslot = Turbine.UI.Lotro.Quickslot
 local Qsize = 34
-local Blank
 
 local UI = {
     title="Birding Log", kit="Birding kit:", spot="Spot bird:", weapon="Weapon:", second="2nd slot:",
@@ -78,38 +77,6 @@ function BL_Window:RefreshProficiency()
 	self._lastProficiency = tonumber(BL_Totals and BL_Totals.fp)
 end
 
-function BL_Shortcut(sender,name,iname,icat)
-	local shortcut = sender:GetShortcut()
-	local itemType = shortcut:GetType()
-	if itemType==0 then return end
-	local itemData = shortcut:GetData()
-	if sender:IsAltKeyDown() then BL_Print((BL_Lang=="FR" and "Type=" or "Type=")..itemType..(BL_Lang=="FR" and ", Données=" or ", Data=")..itemData) end
-	if itemType~=Item then 
-		sender:SetShortcut(Blank) 
-		BL_Print(BL_Lang=="FR" and (name.." réinitialisé.") or (name.." reset."))
-		return 
-	end
-	local Item = shortcut:GetItem()
-	if not Item then BL_PrintE(BL_Lang=="FR" and "Objet introuvable." or "Item is null.") return end
-    if sender:IsShiftKeyDown() then iname=nil; icat=nil end
-    if icat then
-        local info = Item:GetItemInfo()
-        local category = info and info:GetCategory()
-        if category ~= icat then
-            BL_PrintE(BL_Lang=="FR" and (Item:GetName().." n’est pas un kit d’ornithologie valide.") or (Item:GetName().." is not a valid Birding Kit."))
-            sender:SetShortcut(Blank)
-            return
-        end
-    end
-	if iname and Item:GetName():sub(-#iname)~=iname then
-		BL_PrintE(BL_Lang=="FR" and (Item:GetName().." n’est pas un objet valide pour cet emplacement.") or (Item:GetName().." is not a "..iname))
-		sender:SetShortcut(Blank)
-		return
-	end
-	BL_Print(BL_Lang=="FR" and (name.." défini sur "..Item:GetName()) or (name.." set to "..Item:GetName()))
-	return itemData
-end
-
 function BL_Window:Constructor()
 	Turbine.UI.Lotro.Window.Constructor( self )
 
@@ -138,12 +105,8 @@ function BL_Window:Constructor()
 
 	-- Create an kit field
 	self.kit = self:AddField(Quickslot, nil, {x=125,y=50}, {x=Qsize,y=Qsize} )
-	Blank = self.kit:GetShortcut()
 	if BL_Totals.kit then self.kit:SetShortcut( Shortcut(Item,BL_Totals.kit) ) 
 	else self.kit:SetBackground("Dusk/BirdingLog/Kit.tga") end
-	self.kit.ShortcutChanged = function( sender, args )
-		BL_Totals.kit = BL_Shortcut(sender,BL_Lang=="FR" and "Kit d’ornithologie" or "Birding Kit")
-	end
 
 	-- Create a birding label
 	self:AddField(Label, UI.spot, {x=205,y=55}, {x=75,y=16} )
@@ -158,13 +121,10 @@ function BL_Window:Constructor()
 	-- Create a weapon label
 	self:AddField(Label, UI.weapon, {x=50,y=107}, {x=70,y=16} )
 
-	-- Create an weapon field, weapon slot=16, cat=104
+	-- Create a weapon field.
 	self.weapon = self:AddField(Quickslot, nil, {x=125,y=100}, {x=Qsize,y=Qsize} )
 	if BL_Totals.wpn then self.weapon:SetShortcut( Shortcut(Item,BL_Totals.wpn) ) 
 	else self.weapon:SetBackground("Dusk/BirdingLog/Sword.tga") end
-	self.weapon.ShortcutChanged = function( sender, args )
-		BL_Totals.wpn = BL_Shortcut(sender,BL_Lang=="FR" and "Arme" or "Weapon")
-	end
 
 	-- Create a Shield label
 	self:AddField(Label, UI.second, {x=210,y=107}, {x=70,y=16} )
@@ -173,9 +133,6 @@ function BL_Window:Constructor()
 	self.shield = self:AddField(Quickslot, nil, {x=285,y=100}, {x=Qsize,y=Qsize} )
 	if BL_Totals.shl then self.shield:SetShortcut( Shortcut(Item,BL_Totals.shl) ) 
 	else self.shield:SetBackground("Dusk/BirdingLog/Shield.tga") end
-	self.shield.ShortcutChanged = function( sender, args )
-		BL_Totals.shl = BL_Shortcut(sender,BL_Lang=="FR" and "2e emplacement" or "2nd")
-	end
 
 
 	-- Location button: keep the proven working LOTRO Quickslot Alias overlay.
@@ -287,12 +244,13 @@ end
 
 BL_window = BL_Window()
 
--- Set Escape action
-BL_window:SetWantsKeyEvents( true )
-BL_window.KeyDown = function(sender, args)
-	if( args.Action == Turbine.UI.Lotro.Action.Escape and not BL_Options.esc ) then
-		BL_window:SetVisible( false )
-	-- elseif Track and args.Control then 
-	-- 	BL_window.fish:MouseDown(sender, args)
-	end
+-- Key events are only needed while the window is actually visible.
+BL_window:SetWantsKeyEvents(false)
+BL_window.VisibleChanged = function(sender,args)
+    sender:SetWantsKeyEvents(sender:IsVisible())
+end
+BL_window.KeyDown = function(sender,args)
+    if args.Action == Turbine.UI.Lotro.Action.Escape and not BL_Options.esc then
+        BL_window:SetVisible(false)
+    end
 end

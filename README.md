@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.21**
+- Version du fork : **1.3-FR7.22**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -29,6 +29,10 @@ Cette version conserve l'interface et les données historiques de Birding Log to
 - lecture compatible avec les anciennes sauvegardes Dusk simple/double-encodées et changement de langue FR/DE/EN ;
 - appartement Lua dédié `BirdingLog`, isolé de FishingLog et TravelRef ;
 - nettoyage renforcé des handlers, commandes et contrôles asynchrones à l'unload ;
+- état `BL_Totals` + `BL_PendingShortcuts` protégé comme un groupe atomique en cas d'échec de lecture ;
+- runtime unique : `BL_Main` construit les données/UI, `BL_Runtime716` possède seul chat, commandes, sauvegardes et unload ;
+- compteurs normalisés en entiers positifs et données DE alignées directement dans la base source ;
+- tests de régression du codec PluginData (normal, ancien encodage simple/double, changement de langue, erreur de lecture) ;
 - audit GitHub Actions avec compilation Lua 5.1 et contrôles d'invariants.
 
 ## Installation
@@ -91,6 +95,14 @@ Le runtime FR7.16 possède un seul propriétaire pour :
 **FR7.19** ajoute dans la fenêtre principale une ligne de maîtrise du type `Ornithologie : niveau 28 — Bird-brained`. Le meilleur rang atteint est calculé depuis les paliers `BL_Title`. Tant que la fenêtre est visible, l'affichage est rafraîchi automatiquement si la maîtrise change ; si elle était fermée au moment du gain, la nouvelle valeur apparaît dès sa prochaine ouverture.
 
 **FR7.20** agrandit légèrement la fenêtre principale de `340x275` à `360x295` et redistribue les contrôles pour laisser davantage d'espace autour de la maîtrise et des deux rangées d'équipement, sans modifier leur fonctionnement.
+
+### FR7.22 — release consolidée
+
+FR7.22 transforme FR7.21 en release candidate plus simple à maintenir : `BL_Main.lua` ne possède plus de handler chat, de commande active, d'unload ou de Quickslot historique. Ces responsabilités appartiennent uniquement à `BL_Runtime716.lua`.
+
+Les deux fichiers personnage `BL_Totals` et `BL_PendingShortcuts` sont traités comme un même groupe de récupération : si l'un échoue à la lecture, aucun des deux n'est réécrit pendant la session. Une racine de sauvegarde d'un type inattendu est également mise en quarantaine plutôt que remplacée sur disque.
+
+Les titres FR affichés dans la fenêtre utilisent les récompenses actuelles : **Amateur d'oiseaux**, **Oiseleur**, **Fauvette acharnée**, **Connaisseur d’ailes**, **Dompteur d’oiseaux**.
 
 ### FR7.21 — isolation et migration des sauvegardes
 

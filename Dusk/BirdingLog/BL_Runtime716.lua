@@ -1,5 +1,5 @@
--- BirdingLog FR7.16 consolidated runtime.
--- BL_Loader716 performs preflight and imports BL_Main once; this module becomes
+-- BirdingLog FR7.22 consolidated runtime.
+-- BL_Loader716 performs preflight and constructs BL_Main once; this module is
 -- the single owner of persistence, localization, chat, commands and unload.
 
 import "Turbine.UI.Lotro"
@@ -22,6 +22,7 @@ local BL716_LocalizationQueuedForce=false
 local BL716_DeferredRefresh=false
 local BL716_ShortcutGuard=false
 local BL716_Unloading=false
+local BL716_CommandRegistered=false
 
 local BL716_SaveRuntimeData
 
@@ -139,7 +140,6 @@ end
 function BL_ClearPendingShortcut(field)
     local pending=S.LoadPendingShortcuts()
     if pending[field]~=nil then pending[field]=nil end
-    if field=="kit" and pending.kitBypass~=nil then pending.kitBypass=nil end
 end
 
 -- ---------------------------------------------------------------------------
@@ -154,24 +154,6 @@ if BL_GID and not BL_GID["6B900"] then
 end
 if BL_Lang=="FR" and BL_GID and BL_GID["6B900"] then
     BL_GID["6B900"].ln="Chapeau d'ornithologue"
-end
-
--- Keep German geometry/reward identifiers aligned with the language-neutral DB.
--- The historical German data file predates later boundary corrections.
-if BL_Lang=="DE" and BL_Zone then
-    local geometry={
-        Ar={n=-40,s=-72,e=-13,w=-47},
-        Bf={n=-72,s=-93.4,e=-60,w=-74},
-        Ef={n=-53,s=-74,e=-53,w=-76.4},
-        It={n=-41,s=-77,e=-3,w=-19},
-        Wf={n=-53.5,s=-66,e=-76.4,w=-91},
-    }
-    for zc,g in pairs(geometry) do
-        local z=BL_Zone[zc]
-        if z then z.n,z.s,z.e,z.w=g.n,g.s,g.e,g.w end
-    end
-    if BL_GID and BL_GID["6B927"] then BL_GID["6B927"].z="Das Nebelgebirge" end
-    if BL_GID and BL_GID["6B92E"] then BL_GID["6B92E"].z="Die Trollhöhen" end
 end
 
 -- BL_Main was deliberately given an empty BL_Names table during preflight, so
@@ -191,7 +173,9 @@ if BL_Lang=="FR" then
 end
 
 BL_Names=S.PreloadedNames or {}
-BL_GNames=S.SanitizeNameCache(S.Load(Turbine.DataScope.Server,"BL_GNames"))
+local BL716_LoadedGNames=S.Load(Turbine.DataScope.Server,"BL_GNames")
+BL716_LoadedGNames=S.ValidateTableRoot("BL_GNames",BL716_LoadedGNames)
+BL_GNames=S.SanitizeNameCache(BL716_LoadedGNames)
 
 if BL_Lang=="FR" then
     for id,name in pairs(BL_Names) do
@@ -247,12 +231,10 @@ for zc,loc in pairs(BL_Locs) do
 end
 
 if type(BL_Totals)~="table" then BL_Totals={} end
-BL_Totals.fp=S.Number(BL_Totals.fp,0)
+BL_Totals.fp=S.Integer(BL_Totals.fp,0)
 for id,n in pairs(BL_Totals) do
     if type(id)=="string" and #id==5 then BL_Totals[id]=S.SafeCount(n) end
 end
-if not BL_Totals.kit then BL_Totals.kitBypass=nil end
-
 local function BL716_ClampMainWindow()
     if not BL_window then return end
     local x,y=BL_window:GetPosition()
@@ -297,10 +279,6 @@ local function BL716_ValidateRestored(field,control,background)
     if not accepted then
         local pending=S.LoadPendingShortcuts()
         pending[field]=saved
-        if field=="kit" then
-            pending.kitBypass=BL_Totals.kitBypass==true and true or nil
-            BL_Totals.kitBypass=nil
-        end
         BL_Totals[field]=false
         BL716_ClearControl(control,background)
         return
@@ -318,10 +296,10 @@ end
 -- Quickslots and immediate saves
 -- ---------------------------------------------------------------------------
 
-function BL_Shortcut(sender,name,iname,icat)
+function BL_Shortcut(sender,name)
     local shortcut=sender:GetShortcut()
     local itemType=shortcut:GetType()
-    if itemType==0 then return nil,false end
+    if itemType==0 then return nil end
 
     local itemData=shortcut:GetData()
     if sender:IsAltKeyDown() then
@@ -337,51 +315,25 @@ function BL_Shortcut(sender,name,iname,icat)
     if itemType~=Turbine.UI.Lotro.ShortcutType.Item then
         clearSlot()
         BL_Print(BL_Lang=="FR" and (name.." réinitialisé.") or (name.." reset."))
-        return nil,false
+        return nil
     end
 
     if type(itemData)~="string" or itemData=="" then
         clearSlot()
         BL_PrintE(BL_Lang=="FR" and "Données de raccourci invalides." or "Invalid shortcut data.")
-        return nil,false
+        return nil
     end
 
-    local bypass=sender:IsShiftKeyDown()==true
     local item=shortcut:GetItem()
     if not item then
         BL_Print(BL_Lang=="FR" and
-            (name.." enregistré ; validation de l’objet différée.") or
-            (name.." saved; item validation deferred."))
-        return itemData,bypass
-    end
-
-    if bypass then iname=nil icat=nil end
-    if icat then
-        local info=item:GetItemInfo()
-        if not info then
-            BL_Print(BL_Lang=="FR" and
-                (name.." enregistré ; validation de la catégorie différée.") or
-                (name.." saved; category validation deferred."))
-            return itemData,bypass
-        end
-        if info:GetCategory()~=icat then
-            BL_PrintE(BL_Lang=="FR" and
-                (item:GetName().." n’est pas un kit d’ornithologie valide.") or
-                (item:GetName().." is not a valid Birding Kit."))
-            clearSlot()
-            return nil,false
-        end
-    end
-    if iname and item:GetName():sub(-#iname)~=iname then
-        BL_PrintE(BL_Lang=="FR" and
-            (item:GetName().." n’est pas un objet valide pour cet emplacement.") or
-            (item:GetName().." is not a "..iname))
-        clearSlot()
-        return nil,false
+            (name.." enregistré ; résolution de l’objet différée.") or
+            (name.." saved; item resolution deferred."))
+        return itemData
     end
 
     BL_Print(BL_Lang=="FR" and (name.." défini sur "..item:GetName()) or (name.." set to "..item:GetName()))
-    return itemData,bypass
+    return itemData
 end
 
 if BL_window then
@@ -390,7 +342,6 @@ if BL_window then
             if BL716_ShortcutGuard then return end
             local data=BL_Shortcut(sender,BL_Lang=="FR" and "Kit d’ornithologie" or "Birding Kit")
             BL_Totals.kit=data
-            BL_Totals.kitBypass=nil
             BL_ClearPendingShortcut("kit")
             BL716_SaveRuntimeData()
         end
@@ -653,7 +604,7 @@ local function BL716_ChatHandler(sender,args)
                 fp=msg:match("(%d+)")
             end
         end
-        local n=S.Number(fp,0)
+        local n=S.Integer(fp,0)
         if n then
             local changed=BL_Totals.fp~=n
             BL_Totals.fp=n
@@ -944,7 +895,7 @@ function BL_Command:Execute(cmd,args)
 
     local n,bird=args:match("^(%d+)%s+(.+)$")
     if n and bird then
-        n=S.Number(n,0)
+        n=S.Integer(n,0)
         bird=bird:gsub("^%s+",""):gsub("%s+$","")
         if not n or bird=="" then
             BL_PrintE(BL_Lang=="FR" and "Nombre d’observations invalide." or "Invalid sighting count.")
@@ -990,6 +941,17 @@ function BL_Command:Execute(cmd,args)
 
     BL_PrintE((BL_Lang=="FR" and "Commande inconnue : " or "Unknown command, ")..args)
 end
+
+-- Register commands only after the consolidated Execute implementation exists.
+local BL716_CommandOK,BL716_CommandResult=pcall(
+    Turbine.Shell.AddCommand,
+    "bl;blg;bll;blw;bl?",
+    BL_Command
+)
+if not BL716_CommandOK or (type(BL716_CommandResult)=="number" and BL716_CommandResult<=0) then
+    error("BirdingLog could not register its shell commands")
+end
+BL716_CommandRegistered=true
 
 -- ---------------------------------------------------------------------------
 -- Startup persistence and clean unload
@@ -1044,7 +1006,10 @@ Plugins.BirdingLog.Unload=function(sender,args)
         BL_window:SetVisible(false)
     end
     if BL_IconWindow then BL_IconWindow:SetVisible(false) end
-    pcall(function() Turbine.Shell.RemoveCommand(BL_Command) end)
+    if BL716_CommandRegistered then
+        pcall(function() Turbine.Shell.RemoveCommand(BL_Command) end)
+        BL716_CommandRegistered=false
+    end
 
     BL_Print(BL_Lang=="FR" and "Carnet d’ornithologie enregistré." or "Birding record saved.")
 

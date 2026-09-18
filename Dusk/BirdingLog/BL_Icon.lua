@@ -14,15 +14,27 @@ local sw, sh = Turbine.UI.Display.GetWidth(), Turbine.UI.Display.GetHeight()
 local defaultX = math.max(0, sw - 92)
 local defaultY = math.max(0, math.floor(sh * 0.45))
 
-local BL_IconState = Turbine.PluginData.Load(Turbine.DataScope.Server,"BL_IconState")
-if type(BL_IconState) ~= "table" then BL_IconState = {} end
-
-local savedX = tonumber(BL_IconState.x)
-local savedY = tonumber(BL_IconState.y)
-if (not savedX or not savedY) and BL_Options and type(BL_Options.iconPos)=="table" then
-    savedX = savedX or tonumber(BL_Options.iconPos.x)
-    savedY = savedY or tonumber(BL_Options.iconPos.y)
+local BL_IconStateLoadOK=true
+local BL_IconState=nil
+if Dusk.Common and type(Dusk.Common.PluginDataLoadChecked)=="function" then
+    local loaded,ok=Dusk.Common.PluginDataLoadChecked(Turbine.DataScope.Server,"BL_IconState")
+    BL_IconStateLoadOK=ok~=false
+    if BL_IconStateLoadOK and loaded~=nil and type(loaded)~="table" then
+        BL_IconStateLoadOK=false
+    end
+    BL_IconState=type(loaded)=="table" and loaded or {}
+else
+    BL_IconState={}
+    BL_IconStateLoadOK=false
 end
+
+local savedX,savedY
+if BL_Options and type(BL_Options.iconPos)=="table" then
+    savedX=tonumber(BL_Options.iconPos.x)
+    savedY=tonumber(BL_Options.iconPos.y)
+end
+savedX=savedX or tonumber(BL_IconState.x)
+savedY=savedY or tonumber(BL_IconState.y)
 
 local px = math.max(0, math.min(savedX or defaultX, sw - 36))
 local py = math.max(0, math.min(savedY or defaultY, sh - 36))
@@ -33,14 +45,17 @@ function BL_SaveIconPosition()
     local x,y = BL_IconWindow:GetPosition()
     x,y = math.floor(x+0.5), math.floor(y+0.5)
     BL_IconState.x, BL_IconState.y = tostring(x), tostring(y)
-    Turbine.PluginData.Save(Turbine.DataScope.Server,"BL_IconState",BL_IconState)
+    if BL_IconStateLoadOK and Dusk.Common and type(Dusk.Common.PluginDataSave)=="function" then
+        pcall(Dusk.Common.PluginDataSave,Turbine.DataScope.Server,"BL_IconState",BL_IconState)
+    end
     if BL_Options then
-        BL_Options.iconPos = {x=x,y=y} -- backwards compatibility
+        BL_Options.iconPos = {x=x,y=y}
+        if type(BL_SaveOptions)=="function" then BL_SaveOptions() end
     end
 end
 
 -- Create the dedicated state immediately when migrating from an older save.
-if not tonumber(BL_IconState.x) or not tonumber(BL_IconState.y) then
+if BL_IconStateLoadOK and (not tonumber(BL_IconState.x) or not tonumber(BL_IconState.y)) then
     BL_SaveIconPosition()
 end
 

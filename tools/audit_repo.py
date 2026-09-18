@@ -32,6 +32,7 @@ readme = read("README.md")
 updates = read("Dusk/BirdingLog/Updates.txt")
 changelog = read("CHANGELOG.md")
 loader716 = read("Dusk/BirdingLog/BL_Loader716.lua")
+main = read("Dusk/BirdingLog/BL_Main.lua")
 runtime716 = read("Dusk/BirdingLog/BL_Runtime716.lua")
 window = read("Dusk/BirdingLog/BL_Window.lua")
 common = read("Dusk/Common/__init__.lua")
@@ -131,6 +132,46 @@ if fr_revision >= 21:
     require("BL_TitleFR" in window,
             "French proficiency display must use BL_TitleFR")
 
+if fr_revision >= 22:
+    require("Turbine.Engine.GetLanguage()" in main,
+            "FR7.22+ must detect the LOTRO client language through Engine.GetLanguage")
+    require("Turbine.Shell.IsCommand" not in main,
+            "FR7.22+ main must not infer the client language from localized shell commands")
+    require("Turbine.Chat.Received" not in main,
+            "FR7.22+ BL_Main must not own a chat handler")
+    require("Turbine.Shell.AddCommand" not in main,
+            "FR7.22+ BL_Main must not register shell commands")
+    require("Plugins.BirdingLog.Unload" not in main,
+            "FR7.22+ BL_Main must not own unload")
+    require("Turbine.Shell.AddCommand" in runtime716 and
+            "BL716_CommandRegistered" in runtime716,
+            "FR7.22+ runtime must own command registration and cleanup")
+    require("ShortcutChanged" not in window,
+            "FR7.22+ window constructor must not own Quickslot handlers")
+    require("kitBypass" not in runtime716,
+            "FR7.22+ runtime must not retain obsolete kitBypass state")
+    require("S.PairShortcutStateFailures()" in loader716 and
+            'S.MarkLoadFailure("BL_Totals"' in loader716 and
+            'S.MarkLoadFailure("BL_PendingShortcuts"' in loader716,
+            "FR7.22+ must protect totals and pending shortcuts as one recovery group")
+    require("invalid root type:" in loader716 and "S.ValidateTableRoot" in loader716,
+            "FR7.22+ must quarantine structurally invalid PluginData roots")
+    require("return math.floor(n)" in loader716,
+            "FR7.22+ counters must normalize to non-negative integers")
+    require("Turbine.PluginData.Load(" not in icon and
+            "Turbine.PluginData.Save(" not in icon and
+            "PluginDataLoadChecked" in icon and "PluginDataSave" in icon,
+            "FR7.22+ icon persistence must use protected local helpers")
+    require("VisibleChanged" in window and "SetWantsKeyEvents(sender:IsVisible())" in window,
+            "FR7.22+ key events must follow main-window visibility")
+    for title in [
+        "Amateur d'oiseaux", "Oiseleur", "Fauvette acharnée",
+        "Connaisseur d’ailes", "Dompteur d’oiseaux",
+    ]:
+        require(title in data_fr, f"FR7.22+ missing current FR Birding title: {title}")
+    require((ROOT / "tools/test_persistence.lua").exists(),
+            "FR7.22+ persistence regression test is missing")
+
 # Security regression guard: PluginData decoding must never execute save text.
 for lua_path in ROOT.rglob("*.lua"):
     text = lua_path.read_text(encoding="utf-8")
@@ -144,8 +185,36 @@ gid_id_re = re.compile(r'\["([0-9A-F]{5})"\]\s*=\s*\{n\s*=')
 quoted_re = re.compile(r"['\"]([^'\"]+)['\"]")
 
 
+zone_geometry_re = re.compile(
+    r"\['([^']+)'\]\s*=\s*\{z\s*=\s*\"([^\"]+)\",\s*r\s*=\s*([0-9]+),"
+    r"\s*n\s*=\s*(-?[0-9.]+),\s*s\s*=\s*(-?[0-9.]+),"
+    r"\s*e\s*=\s*(-?[0-9.]+),\s*w\s*=\s*(-?[0-9.]+)"
+)
+gid_row_re = re.compile(
+    r'\["([0-9A-F]{5})"\]\s*=\s*\{n\s*=\s*"[^"]*",z\s*=\s*"([^"]*)"\}'
+)
+
+
 def parse_zones(text: str):
     return set(zone_re.findall(text))
+
+
+def parse_zone_geometry(text: str):
+    out = {}
+    for code, name, region, north, south, east, west in zone_geometry_re.findall(text):
+        out[code] = (int(region), float(north), float(south), float(east), float(west))
+    return out
+
+
+def parse_zone_names(text: str):
+    return {name for _, name, *_ in zone_geometry_re.findall(text)}
+
+
+def parse_gid_rows(text: str):
+    match = gid_section_re.search(text)
+    if not match:
+        return []
+    return gid_row_re.findall(match.group(1))
 
 
 def parse_birds(text: str):
@@ -168,6 +237,8 @@ def parse_gids(text: str):
 
 zones_en = parse_zones(data_en)
 zones_de = parse_zones(data_de)
+geometry_en = parse_zone_geometry(data_en)
+geometry_de = parse_zone_geometry(data_de)
 birds_en = parse_birds(data_en)
 birds_de = parse_birds(data_de)
 gids_en = parse_gids(data_en)
@@ -178,6 +249,14 @@ require(bool(birds_en), "no EN bird IDs parsed")
 require(bool(gids_en), "no EN GID IDs parsed")
 require(zones_en == zones_de,
         f"EN/DE zone-code sets differ: EN-only={sorted(zones_en-zones_de)}, DE-only={sorted(zones_de-zones_en)}")
+require(geometry_en == geometry_de,
+        "EN/DE zone geometry differs; runtime patches must not be required")
+for lang, text in [("EN", data_en), ("DE", data_de)]:
+    zone_names = parse_zone_names(text)
+    for gid, zone_name in parse_gid_rows(text):
+        if zone_name:
+            require(zone_name in zone_names,
+                    f"{lang} GID {gid} references non-canonical zone name {zone_name!r}")
 require(set(birds_en) == set(birds_de),
         f"EN/DE bird-ID sets differ: EN-only={sorted(set(birds_en)-set(birds_de))}, DE-only={sorted(set(birds_de)-set(birds_en))}")
 require(gids_en == gids_de,

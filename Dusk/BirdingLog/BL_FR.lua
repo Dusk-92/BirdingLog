@@ -540,11 +540,11 @@ end
 BL_RebuildNameIndex()
 
 -- Titres de progression propres à l'addon (ils n'ont pas été retrouvés dans le DAT FR).
--- Traduction FR4, sans modifier les clés anglaises utilisées sur les autres clients.
+-- Titres de récompense officiels affichés aux paliers d'ornithologie.
 BL_TitleFR = {
-    [10]="Cervelle d'oiseau",
-    [30]="Oiseleur émérite",
-    [50]="Ornithologue inébranlable",
-    [70]="Guetteur d'ailes",
-    [100]="Dompteur d'oiseaux",
+    [10]="Amateur d'oiseaux",
+    [30]="Oiseleur",
+    [50]="Fauvette acharnée",
+    [70]="Connaisseur d’ailes",
+    [100]="Dompteur d’oiseaux",
 }

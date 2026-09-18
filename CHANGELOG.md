@@ -3,16 +3,27 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.22 — 18 septembre 2026
+
+- `BL_Main.lua` est réduit à la construction des données, de l’UI, de l’aide et des options ; le runtime consolidé possède seul chat, commandes, sauvegardes et unload.
+- `BL_Totals` et `BL_PendingShortcuts` sont protégés comme un groupe atomique : l’échec de lecture de l’un interdit la réécriture des deux pendant la session.
+- Les racines PluginData d’un type invalide sont mises en quarantaine au lieu d’être remplacées silencieusement par une table vide sur disque.
+- Les compteurs d’observations et la maîtrise sont normalisés en entiers positifs.
+- Les anciens champs `kitBypass` et la logique de validation de catégorie du runtime actif sont supprimés.
+- Le slot Kit, Arme et 2e emplacement n’ont plus qu’un seul propriétaire de `ShortcutChanged` : `BL_Runtime716.lua`.
+- La langue du client est détectée avec `Turbine.Engine.GetLanguage()`.
+- Les titres FR 10/30/50/70/100 sont alignés sur les récompenses actuelles du jeu.
+- Les événements clavier de la fenêtre ne restent actifs que lorsque la fenêtre est visible.
+- L’état de l’icône passe par les helpers PluginData protégés ; une lecture défectueuse de `BL_IconState` n’est jamais écrasée.
+- Les corrections de géométrie et de noms de récompenses allemandes sont intégrées directement dans `BL_Data_DE.lua`.
+- Ajout d’un test de régression Lua pour les sauvegardes normales, encodées une fois/deux fois, changement de langue et erreur de lecture.
+- Le CI vérifie désormais aussi l’unicité des propriétaires runtime, la parité géométrique EN/DE, les titres FR et le XML du plugin.
+
 ## 1.3-FR7.21 — 18 septembre 2026
 
 - BirdingLog utilise désormais l’appartement Lua dédié `BirdingLog` au lieu de l’appartement partagé `Dusk`.
 - `Dusk/Common` ne remplace plus globalement `Turbine.PluginData.Load/Save`; ses helpers sont locaux au plugin.
-- Les anciennes sauvegardes marquées `# Changelog — BirdingLog FR
-
-Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
-L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
-
- / `#` sont relues sur tous les clients, avec récupération d’une éventuelle double couche d’encodage.
+- Les anciennes sauvegardes marquées `$` / `#` sont relues sur tous les clients, avec récupération d’une éventuelle double couche d’encodage.
 - Une clé dont la lecture échoue n’est plus réécrite pendant la session, afin d’éviter une perte de données.
 - La compatibilité Kit est intégrée dans `BL_Runtime716.lua`; `BL_Runtime717.lua` est supprimé.
 - Le rang affiché dans la fenêtre utilise désormais `BL_TitleFR` sur le client français.

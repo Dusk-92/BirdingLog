@@ -1,9 +1,11 @@
--- BirdingLog FR7.17 consolidated loader.
--- One active entry point: preflight saved data, load the historical UI/core once,
--- then hand ownership to the consolidated runtime. No older compatibility loader is imported.
+-- BirdingLog FR7.22 consolidated loader.
+-- One active entry point: sanitize persistent data, construct the UI/core once,
+-- then hand all runtime ownership to BL_Runtime716.
 
 import "Turbine.UI.Lotro"
 import "Dusk.Common"
+
+BL_ConsolidatedRuntime=true
 
 BL716 = {
     NativeLoad = Turbine.PluginData.Load,
@@ -36,6 +38,29 @@ function S.Load(scope,key,callback)
     return value
 end
 
+function S.MarkLoadFailure(key,message)
+    if not S.LoadFailures[key] then
+        S.LoadFailures[key]=tostring(message or "load failed")
+    end
+end
+
+function S.ValidateTableRoot(key,value)
+    if value~=nil and type(value)~="table" then
+        S.MarkLoadFailure(key,"invalid root type: "..type(value))
+        return {}
+    end
+    return value
+end
+
+function S.PairShortcutStateFailures()
+    local totalError=S.LoadFailures["BL_Totals"]
+    local pendingError=S.LoadFailures["BL_PendingShortcuts"]
+    if totalError or pendingError then
+        S.MarkLoadFailure("BL_Totals",pendingError and "paired shortcut state unavailable" or totalError)
+        S.MarkLoadFailure("BL_PendingShortcuts",totalError and "paired shortcut state unavailable" or pendingError)
+    end
+end
+
 function S.Finite(n)
     return type(n)=="number" and n==n and n~=math.huge and n~=-math.huge
 end
@@ -48,9 +73,14 @@ function S.Number(value,minValue,maxValue)
     return n
 end
 
+function S.Integer(value,minValue,maxValue)
+    local n=S.Number(value,minValue,maxValue)
+    if not n then return nil end
+    return math.floor(n)
+end
+
 function S.SafeCount(value)
-    local n=S.Number(value,0)
-    return n or 0
+    return S.Integer(value,0) or 0
 end
 
 function S.Point(value)
@@ -74,8 +104,11 @@ end
 function S.LoadPendingShortcuts()
     if S.PendingShortcuts then return S.PendingShortcuts end
     local pending=S.Load(Turbine.DataScope.Character,"BL_PendingShortcuts")
+    pending=S.ValidateTableRoot("BL_PendingShortcuts",pending)
     if type(pending)~="table" then pending={} end
+    pending.kitBypass=nil
     S.PendingShortcuts=pending
+    S.PairShortcutStateFailures()
     return pending
 end
 
@@ -148,67 +181,43 @@ local function ProcessShortcutField(value,pending,field)
     local saved=value[field]
     local waiting=pending[field]
 
-    -- false is the explicit FR7.16+ placeholder meaning "temporarily unavailable".
-    -- It distinguishes a pending shortcut from a slot the player deliberately
-    -- cleared (nil), so an old shortcut can never resurrect after a manual clear.
     if saved==false then
         if type(waiting)=="string" and waiting~="" and S.IsShortcutUsable(waiting) then
             value[field]=waiting
             pending[field]=nil
-            if field=="kit" then
-                value.kitBypass=pending.kitBypass==true and true or nil
-                pending.kitBypass=nil
-            end
         elseif waiting==nil then
             value[field]=nil
-            if field=="kit" then value.kitBypass=nil end
         elseif type(waiting)~="string" or waiting=="" then
             pending[field]=nil
             value[field]=nil
-            if field=="kit" then
-                pending.kitBypass=nil
-                value.kitBypass=nil
-            end
         end
         return
     end
 
     if saved==nil then
-        -- nil with an old pending entry means the player cleared/replaced the slot
-        -- in the previous session. Respect that choice instead of resurrecting it.
         if waiting~=nil then pending[field]=nil end
-        if field=="kit" and pending.kitBypass~=nil then pending.kitBypass=nil end
         return
     end
 
     if S.IsShortcutUsable(saved) then
         if waiting~=nil then pending[field]=nil end
-        if field=="kit" and pending.kitBypass~=nil then pending.kitBypass=nil end
         return
     end
 
     if type(saved)=="string" and saved~="" then
         pending[field]=saved
-        if field=="kit" then
-            pending.kitBypass=value.kitBypass==true and true or nil
-            value.kitBypass=nil
-        end
         value[field]=false
     else
         value[field]=nil
         if waiting~=nil then pending[field]=nil end
-        if field=="kit" then
-            value.kitBypass=nil
-            pending.kitBypass=nil
-        end
     end
 end
 
 local function SanitizeTotals(value)
     if type(value)~="table" then value={} end
 
-    value.fp=S.Number(value.fp,0)
-    value.kitBypass=value.kitBypass==true and true or nil
+    value.fp=S.Integer(value.fp,0)
+    value.kitBypass=nil
 
     for id,n in pairs(value) do
         if type(id)=="string" and #id==5 then
@@ -221,6 +230,7 @@ local function SanitizeTotals(value)
     ProcessShortcutField(value,pending,"kit")
     ProcessShortcutField(value,pending,"wpn")
     ProcessShortcutField(value,pending,"shl")
+    S.PairShortcutStateFailures()
     return value
 end
 
@@ -253,6 +263,9 @@ local function PreflightLocs(value)
 end
 
 local function TransformLoad(scope,key,value)
+    if key=="BL_Options" or key=="BL_Totals" or key=="BL_Locs" or key=="BL_Names" then
+        value=S.ValidateTableRoot(key,value)
+    end
     if key=="BL_Options" then return SanitizeOptions(value) end
     if key=="BL_Totals" then return SanitizeTotals(value) end
     if key=="BL_Locs" then return PreflightLocs(value) end
@@ -276,7 +289,24 @@ local mainOK,mainError=pcall(function()
     import "Dusk.BirdingLog.BL_Main"
 end)
 Turbine.PluginData.Load=S.NativeLoad
-if not mainOK then error(mainError) end
+if not mainOK then
+    pcall(function() if BL_AutoFRRunner then BL_AutoFRRunner:SetWantsUpdates(false) end end)
+    pcall(function()
+        if BL_window then
+            BL_window:SetWantsKeyEvents(false)
+            BL_window:SetWantsUpdates(false)
+            BL_window:SetVisible(false)
+        end
+    end)
+    pcall(function() if BL_IconWindow then BL_IconWindow:SetVisible(false) end end)
+    pcall(function()
+        if BL_ChatHandler and Turbine.Chat.Received==BL_ChatHandler then
+            Turbine.Chat.Received=BL_PreviousChatHandler
+        end
+    end)
+    pcall(function() if BL_Command then Turbine.Shell.RemoveCommand(BL_Command) end end)
+    error(mainError)
+end
 
 if BL_Options then
     BL_Options.frProbeVersion=S.SavedProbeVersion
@@ -295,7 +325,13 @@ if not runtimeOK then
         end
     end)
     pcall(function() if BL_Command then Turbine.Shell.RemoveCommand(BL_Command) end end)
-    pcall(function() if BL_window then BL_window:SetWantsUpdates(false) BL_window:SetVisible(false) end end)
+    pcall(function()
+        if BL_window then
+            BL_window:SetWantsKeyEvents(false)
+            BL_window:SetWantsUpdates(false)
+            BL_window:SetVisible(false)
+        end
+    end)
     pcall(function() if BL_IconWindow then BL_IconWindow:SetVisible(false) end end)
     error(runtimeError)
 end

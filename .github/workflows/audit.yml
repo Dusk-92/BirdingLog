@@ -28,3 +28,9 @@ jobs:
             echo "Checking $file"
             luac5.1 -p "$file"
           done
+
+      - name: Persistence regression tests
+        run: lua5.1 tools/test_persistence.lua
+
+      - name: Validate plugin XML
+        run: python3 -c "import xml.etree.ElementTree as ET; ET.parse('Dusk/BirdingLog.plugin')"
