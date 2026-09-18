@@ -1,270 +1,242 @@
-# BirdingLog FR
+# 🐦 BirdingLog
 
-Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
+Carnet d’ornithologie pour **The Lord of the Rings Online**, avec suivi des observations, progression par zone et fenêtre dédiée aux prouesses.
 
-- Addon original : **Birding Log** par David Down (Vinny)
-- Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.26**
-- Addon original : https://www.lotrointerface.com/downloads/info1241
+**🌍 Langues / Languages / Sprachen :** 🇫🇷 Français · 🇬🇧 English · 🇩🇪 Deutsch
 
-## Objectif du fork
+---
 
-Cette version conserve l'interface et les données historiques de Birding Log tout en renforçant son fonctionnement sur les clients français, anglais et allemands :
+## 🇫🇷 Français
 
-- interface et messages principaux en français sur le client FR ;
-- noms français officiels des oiseaux liés aux ID internes LOTRO ;
-- suivi des observations indépendant de la langue du nom d'objet ;
-- coordonnées FR avec virgule décimale et `O` pour Ouest ;
-- détection de zone déterministe lorsque plusieurs rectangles se chevauchent ;
-- mémorisation des sous-zones extérieures que les coordonnées historiques ne reconnaissent pas ;
-- caches séparés pour les noms d'oiseaux et d'objets appris dynamiquement ;
-- Quickslots sauvegardés vérifiés contre les rejets silencieux de Turbine ;
-- récupération automatique d'un raccourci temporairement indisponible ;
-- slot Kit compatible avec les kits LOTRO actuels sans dépendre de l'ancienne catégorie `104` ;
-- icône flottante sur la couche UI normale afin que la carte et les panneaux natifs LOTRO puissent passer devant ;
-- niveau d'ornithologie et meilleur rang atteint affichés directement dans la fenêtre principale ;
-- fenêtre principale légèrement agrandie et redistribuée pour laisser plus d'espace entre les blocs ;
-- fenêtre **Prouesses** dédiée : progression par zone, détail des 16 oiseaux requis et récompense connue ;
-- assainissement des anciennes sauvegardes avant création de l'interface ;
-- autosave périodique et sauvegardes immédiates des changements importants ;
-- sauvegardes runtime vérifiées avec le callback réel de `PluginData.Save` ;
-- lecture compatible avec les anciennes sauvegardes Dusk simple/double-encodées et changement de langue FR/DE/EN ;
-- appartement Lua dédié `BirdingLog`, isolé de FishingLog et TravelRef ;
-- nettoyage renforcé des handlers, commandes et contrôles asynchrones à l'unload ;
-- état `BL_Totals` + `BL_PendingShortcuts` protégé comme un groupe atomique en cas d'échec de lecture ;
-- runtime unique : `BL_Main` construit les données/UI, `BL_Runtime716` possède seul chat, commandes, sauvegardes et unload ;
-- compteurs normalisés en entiers positifs et données DE alignées directement dans la base source ;
-- tests de régression du codec PluginData (normal, ancien encodage simple/double, changement de langue, erreur de lecture) ;
-- audit GitHub Actions avec compilation Lua 5.1 et contrôles d'invariants.
+### 📖 Présentation
 
-## Installation
+**BirdingLog** est une adaptation et une maintenance communautaire du plugin **Birding Log** de David Down / Vinny. Le fork modernise le fonctionnement du plugin tout en conservant son carnet d’observations et ses données historiques.
 
-Copier le dossier `Dusk` dans :
+### ✨ Fonctionnalités
+
+- Suivi des oiseaux observés à partir de leurs identifiants LOTRO.
+- Fonctionnement indépendant de la langue affichée pour les noms d’objets.
+- Progression par zone.
+- Fenêtre **Prouesses** avec oiseaux obtenus et manquants.
+- Niveau d’ornithologie et meilleur rang affichés dans la fenêtre principale.
+- Détection de zone à partir des coordonnées LOTRO.
+- Apprentissage contrôlé des sous-zones extérieures non reconnues.
+- Gestion des coordonnées françaises avec virgule décimale et `O` pour Ouest.
+- Raccourcis d’équipement et kit d’ornithologie.
+- Sauvegardes renforcées et compatibilité avec les anciennes données.
+- Interface compatible FR / EN / DE.
+
+### 📦 Installation
+
+Copie le dossier **Dusk** dans :
 
 ```text
 Documents\The Lord of the Rings Online\Plugins\
 ```
 
-Le fichier principal doit ensuite se trouver ici :
+Puis en jeu :
 
 ```text
-Documents\The Lord of the Rings Online\Plugins\Dusk\BirdingLog.plugin
+/plugins refresh
+/plugins load BirdingLog
 ```
 
-Dans LOTRO, actualiser le gestionnaire de plugins puis charger **BirdingLog**.
+### 🎮 Utilisation
 
-## Commandes principales
+Ouvre BirdingLog pour consulter ta maîtrise, tes observations et la progression des zones. Le bouton **Détecter zone** utilise la commande de localisation LOTRO afin de rapprocher tes coordonnées des régions connues.
+
+Si une sous-zone extérieure ne peut pas être reconnue immédiatement, BirdingLog peut apprendre son association à partir de nouvelles observations ou d’une sélection manuelle.
+
+### ⌨️ Commandes
+
+- `/bl` — afficher la maîtrise d’ornithologie.
+- `/bl sight` — afficher les observations personnelles.
+- `/bl zones` — afficher la progression par zone.
+- `/bl deeds` — ouvrir la fenêtre des prouesses.
+- `/bl deed <zone>` — afficher le détail d’une zone.
+- `/bl area forget` — oublier la dernière association de sous-zone apprise.
+- `/bl fr` — rafraîchir les noms français appris dynamiquement.
+- `/bl track` — activer/désactiver le suivi des objets inconnus.
+- `/blw` — ouvrir la fenêtre BirdingLog.
+- `/bll zone` — lister les oiseaux de la zone sélectionnée.
+- `/bll list` — lister les observations de la zone sélectionnée.
+- `/blg` — afficher la récompense de la zone sélectionnée.
+
+### ⚙️ Sauvegardes & réglages
+
+BirdingLog utilise son propre espace Lua et conserve les observations, associations de zones et réglages du plugin. Les anciennes sauvegardes compatibles sont migrées et protégées contre les lectures incomplètes.
+
+### 🌍 Langues
+
+Le plugin prend en charge les clients **français, anglais et allemands**. Les noms français officiels sont reliés aux identifiants internes LOTRO afin d’éviter de dépendre uniquement du texte affiché.
+
+### ⚠️ Limites / notes
+
+L’API LOTRO ne fournit pas directement une région d’ornithologie fiable dans toutes les sous-zones. La détection repose donc sur les coordonnées connues et, lorsque nécessaire, sur un apprentissage contrôlé. Une zone inconnue n’est pas associée arbitrairement.
+
+### 🐛 Bugs & suggestions
+
+Utilise les [Issues GitHub](https://github.com/Dusk-92/BirdingLog/issues).
+
+### 🙏 Crédits
+
+Plugin original : **David Down / Vinny**.  
+Adaptation et maintenance : **Dusk-92**.
+
+---
+
+## 🇬🇧 English
+
+### 📖 Overview
+
+**BirdingLog** is a community-maintained adaptation of **Birding Log** by David Down / Vinny. The fork modernizes the plugin while preserving its observation log and historical data.
+
+### ✨ Features
+
+- Bird observation tracking using LOTRO internal IDs.
+- Tracking independent from localized item-name text.
+- Progress by region.
+- Dedicated **Deeds** window with collected and missing birds.
+- Birding skill level and best rank in the main window.
+- Region detection from LOTRO coordinates.
+- Controlled learning for outdoor sub-areas that cannot be recognized directly.
+- Support for localized coordinate formats.
+- Equipment shortcuts and current birding kits.
+- Hardened saved data with legacy compatibility.
+- FR / EN / DE client support.
+
+### 📦 Installation
+
+Copy the **Dusk** folder into:
 
 ```text
-/bl             Afficher la maîtrise d'ornithologie
-/bl sight       Afficher les observations personnelles
-/bl zones       Afficher la progression par zone
-/bl deeds       Ouvrir la fenêtre des prouesses
-/bl deed <zone> Ouvrir le détail d’une zone
-/bl area forget Oublier l’association de sous-zone détectée récemment
-/bl fr          Rafraîchir les noms FR appris dynamiquement
-/bl track       Activer/désactiver le suivi des objets réellement inconnus
-/blw            Ouvrir la fenêtre BirdingLog
-/bll zone       Lister les oiseaux de la zone sélectionnée
-/bll list       Lister les observations de la zone sélectionnée
-/blg            Afficher la récompense de la zone sélectionnée
+Documents\The Lord of the Rings Online\Plugins\
 ```
 
-Le bouton **Détecter zone** utilise la commande LOTRO `;loc` (ou son équivalent localisé) et les coordonnées connues par BirdingLog.
-
-Depuis **FR7.25**, lorsqu’un lieu utilise une autre carte ou un autre repère de coordonnées et ne peut pas être rattaché immédiatement à l’une des 33 zones d’ornithologie, BirdingLog ouvre une fenêtre d’apprentissage de **5 minutes** :
-
-- les observations sont temporairement mises en mémoire sans être perdues pour l’historique local ;
-- une ou plusieurs observations peuvent identifier automatiquement la région si l’intersection des zones possibles devient unique ;
-- une sélection manuelle de la bonne région mémorise ou corrige l’association ;
-- des observations incompatibles annulent l’apprentissage plutôt que d’associer un lieu obsolète après un déplacement.
-
-L’association est sauvegardée côté serveur dans `BL_AreaAliases` et réutilisée lors des prochains passages. Après une détection récente, `/bl area forget` permet d’oublier l’association et de la réapprendre proprement. Les lieux inconnus ne sont jamais arbitrairement rattachés à une région : sans observation compatible ni validation manuelle, aucun alias n’est créé.
-
-## Architecture FR7.16+
-
-Depuis **FR7.16**, le point d'entrée est :
+Then in game:
 
 ```text
-Dusk.BirdingLog.BL_Loader716
+/plugins refresh
+/plugins load BirdingLog
 ```
 
-`BL_Loader716.lua` effectue uniquement le **préflight** des sauvegardes sensibles, charge une seule fois le cœur historique `BL_Main`, puis passe la main à `BL_Runtime716.lua`.
+### 🎮 Usage
 
-Les anciens `BL_Loader.lua` et `BL_Loader712.lua` restent dans le dépôt pour l'historique mais **ne sont plus dans le chemin d'exécution actif**. Cela supprime l'empilement de wrappers qui rendait les versions FR7.11 à FR7.15 difficiles à auditer globalement.
+Open BirdingLog to review your skill level, observations and regional progress. The **Detect area** function uses LOTRO location coordinates to match your position with known birding regions.
 
-Le runtime FR7.16 possède un seul propriétaire pour :
+When an outdoor sub-area cannot be recognized immediately, BirdingLog can learn the association from new observations or a manual selection.
 
-- le handler de chat BirdingLog ;
-- les sauvegardes runtime ;
-- la localisation dynamique FR ;
-- les validations de Quickslots après chargement ;
-- les commandes BirdingLog ;
-- le nettoyage à l'unload.
+### ⌨️ Commands
 
-**FR7.17** a supprimé la dépendance fonctionnelle à la catégorie historique `104` pour le slot **Kit**. Depuis **FR7.21**, cette compatibilité est intégrée directement à `BL_Runtime716.lua` : `BL_Runtime717.lua` n’est plus nécessaire.
+- `/bl` — show birding skill information.
+- `/bl sight` — show personal sightings.
+- `/bl zones` — show progress by region.
+- `/bl deeds` — open the Deeds window.
+- `/bl deed <zone>` — show details for one region.
+- `/bl area forget` — forget the latest learned sub-area association.
+- `/bl fr` — refresh dynamically learned French names.
+- `/bl track` — toggle unknown-item tracking.
+- `/blw` — open the BirdingLog window.
+- `/bll zone` — list birds for the selected region.
+- `/bll list` — list sightings for the selected region.
+- `/blg` — show the reward for the selected region.
 
-**FR7.18** aligne l'icône flottante sur TravelRef et LOTRO Events : `BL_IconWindow` utilise désormais `SetZOrder(0)`. La carte et les autres panneaux natifs LOTRO peuvent donc la recouvrir normalement.
+### ⚙️ Saved data & settings
 
-**FR7.19** ajoute dans la fenêtre principale une ligne de maîtrise du type `Ornithologie : niveau 28 — Bird-brained`. Le meilleur rang atteint est calculé depuis les paliers `BL_Title`. Tant que la fenêtre est visible, l'affichage est rafraîchi automatiquement si la maîtrise change ; si elle était fermée au moment du gain, la nouvelle valeur apparaît dès sa prochaine ouverture.
+BirdingLog uses its own Lua data apartment and stores observations, learned area associations and plugin settings. Compatible legacy data is migrated with additional safeguards against incomplete reads.
 
-**FR7.20** agrandit légèrement la fenêtre principale de `340x275` à `360x295` et redistribue les contrôles pour laisser davantage d'espace autour de la maîtrise et des deux rangées d'équipement, sans modifier leur fonctionnement.
+### 🌍 Languages
 
-### FR7.26 — correctif d’ouverture de Prouesses
+The plugin supports **French, English and German** clients. French canonical names are tied to LOTRO internal IDs so tracking does not depend only on displayed text.
 
-FR7.26 corrige une régression introduite lors de l’harmonisation de la fenêtre **Prouesses** en FR7.25. Cette fenêtre revient à son comportement autonome validé en FR7.23/FR7.24 : elle est centrée et ouverte sans réutiliser `pos2` ni appliquer `SetScale` au clic.
+### ⚠️ Limitations / notes
 
-Le bouton **Prouesses** possède également un filet de sécurité : si LOTRO refuse l’ouverture de la fenêtre, BirdingLog affiche la progression des zones dans le chat au lieu de ne rien faire.
+The LOTRO API does not expose a reliable birding region for every sub-area. Detection therefore relies on known coordinates and, when needed, controlled learning. Unknown locations are not mapped arbitrarily.
 
-### FR7.25 — audit consolidé et apprentissage sécurisé
+### 🐛 Bugs & suggestions
 
-FR7.25 regroupe les corrections issues de l’audit global. Le résolveur de sous-zones est isolé dans `BL_AreaResolver.lua` et testé indépendamment du moteur Turbine. Une tentative de détection inconnue expire après cinq minutes, les observations sont mises en tampon jusqu’à identification de la région, puis réinjectées dans `BL_Locs` sans double comptage.
+Use [GitHub Issues](https://github.com/Dusk-92/BirdingLog/issues).
 
-Une association apprise peut désormais être corrigée par une nouvelle sélection manuelle juste après **Détecter zone**, ou supprimée avec `/bl area forget`. Des observations contradictoires annulent l’apprentissage au lieu de conserver un ancien lieu.
+### 🙏 Credits
 
-La lecture de la maîtrise d’ornithologie est également durcie : valeurs limitées à 0–200, progression non décroissante et détection FR/DE plus restrictive. La fenêtre **Prouesses** suit maintenant l’échelle globale, respecte l’option **Ignorer Échap**, mémorise sa position et indique clairement lorsqu’une récompense n’est simplement pas documentée dans BirdingLog.
+Original plugin: **David Down / Vinny**.  
+Adaptation and maintenance: **Dusk-92**.
 
-### FR7.24 — sous-zones extérieures apprises
+---
 
-FR7.24 complète la détection par rectangles avec un résolveur de sous-zones. Lorsqu’un paysage extérieur utilise des coordonnées différentes de celles de la région historique — par exemple une carte alternative — BirdingLog peut désormais mémoriser le couple `région globale + lieu` et le rattacher à la bonne zone d’ornithologie.
+## 🇩🇪 Deutsch
 
-Si la zone est inconnue, BirdingLog n’affiche plus une erreur sèche. Il attend soit une observation suffisamment distinctive pour déduire automatiquement la zone à partir de la base des oiseaux, soit une sélection manuelle unique dans le menu. Une fois apprise, la sous-zone est restaurée automatiquement aux sessions suivantes.
+### 📖 Übersicht
 
-Cette logique ne force pas les donjons et raids dans une région d’ornithologie : sans observation compatible ou validation manuelle, ils restent non associés.
+**BirdingLog** ist eine gemeinschaftlich gepflegte Anpassung von **Birding Log** von David Down / Vinny. Der Fork modernisiert das Plugin und bewahrt gleichzeitig Beobachtungsprotokoll und historische Daten.
 
-### FR7.23 — suivi des prouesses
+### ✨ Funktionen
 
-FR7.23 ajoute une fenêtre **Prouesses d'ornithologie** accessible depuis le bouton **Prouesses** de la fenêtre principale ou avec `/bl deeds`.
+- Vogelbeobachtungen anhand interner LOTRO-IDs.
+- Erfassung unabhängig vom lokalisierten Gegenstandsnamen.
+- Fortschritt nach Region.
+- Eigenes **Taten**-Fenster mit gefundenen und fehlenden Vögeln.
+- Anzeige von Ornithologie-Stufe und bestem Rang.
+- Gebietserkennung über LOTRO-Koordinaten.
+- Kontrolliertes Lernen unbekannter Außen-Untergebiete.
+- Unterstützung lokalisierter Koordinatenformate.
+- Ausrüstungs-Schnellplätze und aktuelle Ornithologie-Sets.
+- Robuste Speicherdaten mit Legacy-Kompatibilität.
+- Unterstützung für FR / EN / DE.
 
-La vue générale affiche les 33 zones connues et leur progression `X/16`. Un clic sur une zone ouvre le détail des oiseaux trouvés/manquants, ainsi que la récompense associée lorsque BirdingLog la connaît. La commande `/bl deed <zone>` ouvre directement une zone par son nom.
+### 📦 Installation
 
-La progression est calculée uniquement depuis les observations déjà suivies par BirdingLog (`BL_Totals`) : elle ne prétend pas lire directement le journal natif des prouesses de LOTRO. La fenêtre se rafraîchit immédiatement lorsqu'une nouvelle observation ou un ajout manuel est enregistré.
+Den Ordner **Dusk** nach folgendem Pfad kopieren:
 
-### FR7.22 — release consolidée
+```text
+Documents\The Lord of the Rings Online\Plugins\
+```
 
-FR7.22 transforme FR7.21 en release candidate plus simple à maintenir : `BL_Main.lua` ne possède plus de handler chat, de commande active, d'unload ou de Quickslot historique. Ces responsabilités appartiennent uniquement à `BL_Runtime716.lua`.
+Danach im Spiel:
 
-Les deux fichiers personnage `BL_Totals` et `BL_PendingShortcuts` sont traités comme un même groupe de récupération : si l'un échoue à la lecture, aucun des deux n'est réécrit pendant la session. Une racine de sauvegarde d'un type inattendu est également mise en quarantaine plutôt que remplacée sur disque.
+```text
+/plugins refresh
+/plugins load BirdingLog
+```
 
-Les titres FR affichés dans la fenêtre utilisent les récompenses actuelles : **Amateur d'oiseaux**, **Oiseleur**, **Fauvette acharnée**, **Connaisseur d’ailes**, **Dompteur d’oiseaux**.
+### 🎮 Verwendung
 
-### FR7.21 — isolation et migration des sauvegardes
+BirdingLog öffnen, um Fertigkeitsstufe, Beobachtungen und regionalen Fortschritt zu sehen. Die Gebietserkennung nutzt LOTRO-Koordinaten und gleicht sie mit bekannten Ornithologie-Regionen ab.
 
-FR7.21 supprime le monkeypatch global de `Turbine.PluginData.Load/Save`. Les helpers de `Dusk/Common` savent relire les anciennes sauvegardes marquées avec les préfixes `$` / `#`, y compris une double couche laissée par d’anciens ordres de chargement. Une lecture en erreur désactive l’écriture de la clé concernée pour la session afin d’éviter d’écraser une sauvegarde valide.
+Kann ein Außen-Untergebiet nicht direkt erkannt werden, kann BirdingLog die Zuordnung anhand neuer Beobachtungen oder einer manuellen Auswahl lernen.
 
-Le niveau d’ornithologie rafraîchit directement la fenêtre lors du message de progression, sans polling à chaque frame. Le rang FR utilise `BL_TitleFR`, et l’ajout manuel appelle directement l’autosave.
+### ⌨️ Befehle
 
-## Données françaises et localisation dynamique
+- `/bl` — Ornithologie-Informationen anzeigen.
+- `/bl sight` — eigene Beobachtungen anzeigen.
+- `/bl zones` — Fortschritt nach Region anzeigen.
+- `/bl deeds` — Taten-Fenster öffnen.
+- `/bl deed <zone>` — Details einer Region anzeigen.
+- `/bl area forget` — zuletzt gelernte Gebietszuordnung vergessen.
+- `/bl fr` — dynamisch gelernte französische Namen aktualisieren.
+- `/bl track` — Erfassung unbekannter Gegenstände umschalten.
+- `/blw` — BirdingLog-Fenster öffnen.
+- `/bll zone` — Vögel der ausgewählten Region auflisten.
+- `/bll list` — Beobachtungen der ausgewählten Region auflisten.
+- `/blg` — Belohnung der ausgewählten Region anzeigen.
 
-La base officielle française est liée aux **ID internes LOTRO**, et non aux noms anglais. Les traductions connues sont chargées depuis `BL_FR.lua`.
+### ⚙️ Gespeicherte Daten & Einstellungen
 
-FR7.16 reconstruit à chaque chargement la liste des IDs disposant d'un nom FR officiel **avant** de réappliquer les caches dynamiques. Un ancien nom appris ne peut donc pas écraser une traduction intégrée au plugin.
+BirdingLog verwendet einen eigenen Lua-Datenbereich und speichert Beobachtungen, gelernte Gebietszuordnungen und Einstellungen. Kompatible ältere Daten werden mit zusätzlichen Schutzmechanismen übernommen.
 
-Les noms appris dynamiquement sont conservés séparément :
+### 🌍 Sprachen
 
-- `BL_Names` pour les oiseaux ;
-- `BL_GNames` pour les récompenses et objets liés au hobby.
+Das Plugin unterstützt **Deutsch, Englisch und Französisch**. Französische kanonische Namen werden mit internen LOTRO-IDs verknüpft, damit die Erfassung nicht nur vom sichtbaren Text abhängt.
 
-`/bl fr` ne détruit pas les traductions officielles. Il re-sonde uniquement les IDs non officiels qui en ont besoin, ou tous les IDs dynamiques lors d'un refresh manuel. L'ancien nom appris reste disponible si LOTRO ne renvoie rien de nouveau.
+### ⚠️ Einschränkungen / Hinweise
 
-FR7.16 utilise **un seul runner de localisation réel** pour oiseaux et objets. Il n'y a plus de second probe GID ni d'estimation de son activité par nombre de frames. Une demande `/bl fr` reçue pendant une passe ou une sauvegarde est mise en attente puis rejouée proprement.
+Die LOTRO-API liefert nicht für jedes Untergebiet zuverlässig die passende Ornithologie-Region. Deshalb nutzt die Erkennung bekannte Koordinaten und bei Bedarf ein kontrolliertes Lernverfahren. Unbekannte Orte werden nicht willkürlich zugeordnet.
 
-La signature de base utilise le préfixe **`BL716`**. Elle n'est validée qu'après :
+### 🐛 Fehler & Vorschläge
 
-1. la fin réelle du probe ;
-2. la sauvegarde réussie de `BL_Names` ;
-3. la sauvegarde réussie de `BL_GNames` ;
-4. la sauvegarde réussie de `BL_Options` contenant la nouvelle signature.
+Bitte die [GitHub Issues](https://github.com/Dusk-92/BirdingLog/issues) verwenden.
 
-Si une de ces écritures échoue, la signature précédente est conservée afin qu'une session ultérieure puisse réessayer.
+### 🙏 Credits
 
-Le **Chapeau d'ornithologue** (`6B900`) est également reconnu comme objet connu du hobby sans être traité comme une récompense de zone.
-
-## Quickslots et anciennes sauvegardes
-
-Les champs sauvegardés `kit`, `wpn` et `shl` sont testés avant que `BL_Window` ne crée ses contrôles :
-
-- construction d'un `ShortcutType.Item` ;
-- application dans un Quickslot de test caché ;
-- vérification du type retourné ;
-- vérification exacte de `GetData()`.
-
-Un raccourci momentanément rejeté par LOTRO n'est plus détruit. FR7.16 le place dans `BL_PendingShortcuts` et met une valeur `false` explicite dans le champ actif. Cette distinction est importante :
-
-- `false` = raccourci en attente, à retenter au prochain chargement ;
-- `nil` = emplacement réellement vidé par le joueur, à ne jamais ressusciter.
-
-Si le joueur modifie ou vide ensuite l'emplacement, l'entrée pending est supprimée.
-
-Depuis **FR7.17**, le slot **Kit d'ornithologie** n'utilise plus `GetItemInfo():GetCategory()` ni la constante historique `BL_BirdingKit=104`. Le test runtime dans LOTRO a montré que cette valeur pouvait rejeter le véritable **Kit d'ornithologie de base**. Le slot Kit accepte donc désormais tout raccourci de type `Item` dont les données sont valides, comme les emplacements Arme et 2e slot. Cette règle s'applique aussi aux futurs kits que LOTRO pourrait exposer avec une autre catégorie interne.
-
-En **FR7.21**, la validation du Kit est directement intégrée au runtime principal : aucun contrôle par catégorie `104` n’est exécuté et aucune surcouche séparée n’est nécessaire. Les raccourcis pending et la sauvegarde immédiate restent pris en charge.
-
-Une seconde validation est toujours effectuée sur les vrais Quickslots après construction de la fenêtre afin de couvrir le cas où le probe de préflight accepte un raccourci mais où le contrôle réel le rejette quelques instructions plus tard.
-
-## Sauvegardes et crash-loss protection
-
-BirdingLog sauvegarde notamment :
-
-- les totaux du personnage et sa maîtrise ;
-- les observations par zone ;
-- les options de fenêtre ;
-- les raccourcis d'équipement ;
-- les raccourcis temporairement indisponibles ;
-- les caches de noms dynamiques.
-
-Les observations déclenchent un autosave toutes les **10 observations reconnues**. Les changements importants — maîtrise, équipement, nouveau nom appris, ajout manuel et compteur manuel — déclenchent une sauvegarde immédiate.
-
-FR7.16 sérialise ces écritures pour éviter que plusieurs sauvegardes des mêmes tables se chevauchent. Si une modification arrive pendant une sauvegarde, une nouvelle passe est regroupée et exécutée juste après.
-
-Contrairement aux anciennes couches qui considéraient qu'un `pcall()` réussi signifiait que la sauvegarde avait réussi, FR7.16 utilise le **callback `PluginData.Save(success, message)`**. Un échec réel laisse le retry actif et la modification suivante provoque une nouvelle tentative.
-
-`Dusk/Common/Options.lua` route également les sauvegardes de `BL_Options` vers cet ordonnanceur lorsque le runtime consolidé est chargé. Les mouvements rapides du curseur d'échelle sont donc coalescés au lieu de lancer des écritures concurrentes. La fenêtre est immédiatement re-bornée à l'écran après un changement d'échelle.
-
-## Compatibilité des données
-
-Le préflight neutralise les valeurs non numériques, positions invalides et structures de raccourci dangereuses avant qu'elles n'atteignent les contrôles Turbine.
-
-Les anciennes données de lieux sont migrées vers les zones modernes **sans écraser les zones déjà présentes dans une sauvegarde mixte**. Les IDs de compteurs inconnus sont conservés plutôt que supprimés, afin qu'un retour vers une base de données plus récente ne perde pas leur historique.
-
-Sur le client allemand, FR7.16 applique aussi les corrections de géométrie de zones déjà présentes dans la base EN/FR et corrige les deux différences de casse qui empêchaient certaines récompenses de correspondre à leur zone.
-
-Sur les clients FR/DE, `Dusk/Common` conserve le contournement du bug de séparateur décimal de `PluginData`. Le décodage n'utilise pas `loadstring()` : les données sauvegardées ne sont jamais exécutées comme du code Lua.
-
-## Audit automatique
-
-Le dépôt contient `.github/workflows/audit.yml` et `tools/audit_repo.py`.
-
-À chaque push ou pull request, GitHub Actions :
-
-- compile **tous les fichiers Lua avec Lua 5.1** ;
-- vérifie la cohérence version / README / changelog / `Updates.txt` ;
-- vérifie que le point d'entrée déclaré existe ;
-- empêche le retour vers l'ancien empilement de loaders ;
-- compare les ensembles d'IDs oiseaux et objets EN/DE ;
-- vérifie toutes les références oiseaux → zones ;
-- exige une traduction FR intégrée pour chaque oiseau et objet actuel ;
-- vérifie les protections essentielles du runtime consolidé ;
-- vérifie que le handler Kit consolidé n’utilise plus la catégorie historique `104` ;
-- vérifie que l'icône reste sur `SetZOrder(0)` depuis FR7.18 ;
-- vérifie la présence de l'affichage dynamique de maîtrise depuis FR7.19 ;
-- vérifie que chaque région d’ornithologie contient exactement 16 oiseaux ;
-- exécute les tests comportementaux du résolveur de sous-zones (expiration, buffer, correction et oubli d’alias) ;
-- vérifie qu’un seul README principal est présent ;
-- bloque le retour de `loadstring()`.
-
-Cela ne remplace pas un test dans le moteur Turbine de LOTRO, mais attrape automatiquement une grande partie des régressions structurelles avant publication.
-
-## À propos de `Dusk/Common`
-
-BirdingLog et FishingLog embarquent toujours la même bibliothèque historique `Dusk/Common`, gardée strictement identique dans les deux dépôts. Depuis FR7.21/FR8.5, chaque plugin utilise toutefois son **propre appartement Lua** et les helpers PluginData sont locaux : installer ou charger l’un ne modifie plus le runtime de l’autre ni celui de TravelRef.
-
-## Plugin Compendium
-
-Le fichier `.plugincompendium` de l'addon original utilisait l'identifiant LOTROInterface **1241**, qui appartient à la publication originale. Il n'est pas repris comme identité de ce fork afin d'éviter qu'un gestionnaire de mises à jour confonde la version Dusk avec la version officielle.
-
-## Crédits
-
-Birding Log a été créé par **David Down**. Ce dépôt conserve son travail d'origine et ajoute les adaptations françaises et correctifs de maintenance du fork Dusk-92.
-
-Aucune licence différente de celle éventuellement applicable au projet original n'est revendiquée ici.
+Ursprüngliches Plugin: **David Down / Vinny**.  
+Anpassung und Wartung: **Dusk-92**.
