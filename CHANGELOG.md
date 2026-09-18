@@ -3,6 +3,16 @@
 Ce fichier regroupe les évolutions du fork français maintenu par **Dusk-92**.
 L'historique original de Birding Log reste disponible dans `Dusk/BirdingLog/Updates.txt` et dans l'historique Git.
 
+## 1.3-FR7.23 — 18 septembre 2026
+
+- Ajout d’une fenêtre dédiée **Prouesses d’ornithologie** accessible depuis la fenêtre principale.
+- La vue générale affiche les 33 zones connues avec leur progression `X/16` et marque les zones terminées.
+- Un clic sur une zone affiche les 16 oiseaux requis, leur état trouvé/manquant, le nombre d’observations et la récompense connue.
+- Ajout des commandes `/bl deeds`, `/bl deed` et `/bl deed <zone>`.
+- Le bouton historique **Liste zones** devient **Prouesses** ; la commande `/bl zones` reste disponible.
+- La fenêtre des prouesses se rafraîchit immédiatement après une observation reconnue ou un ajout manuel.
+- Le suivi reste volontairement dérivé des observations BirdingLog et ne prétend pas lire directement le journal natif des prouesses LOTRO.
+
 ## 1.3-FR7.22 — 18 septembre 2026
 
 - `BL_Main.lua` est réduit à la construction des données, de l’UI, de l’aide et des options ; le runtime consolidé possède seul chat, commandes, sauvegardes et unload.
