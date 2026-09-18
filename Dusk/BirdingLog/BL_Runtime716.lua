@@ -646,7 +646,7 @@ function BL_LearnCurrentArea(code)
 end
 
 local function BL716_LearnAreaFromBird(id)
-    local context=BL716_CurrentArea
+    local context=BL716_PendingArea
     if BL_LocStr or type(context)~="table" or not context.key then return false end
     local bird=BL_ID and BL_ID[id]
     if not bird or type(bird.f)~="table" then return false end
