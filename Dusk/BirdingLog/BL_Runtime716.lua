@@ -839,7 +839,13 @@ local function BL716_ChatHandler(sender,args)
         return
     end
 
-    -- Unknown loot is intentionally silent during normal play. Only the explicit\n    -- /bl track diagnostic mode may report unrecognized item IDs. This prevents\n    -- unrelated loot (frames, fish, weapons, quest items, etc.) from producing\n    -- false BirdingLog errors just because the hobby quickslot was hovered.\n    if BL_TrackUnknown then\n        BL_PrintE((BL_Lang=="FR" and "Inconnu : " or "Unknown: ")..name..", id="..tostring(id))\n    end
+    -- Unknown loot is intentionally silent during normal play. Only the explicit
+    -- /bl track diagnostic mode may report unrecognized item IDs. This prevents
+    -- unrelated loot (frames, fish, weapons, quest items, etc.) from producing
+    -- false BirdingLog errors just because the hobby quickslot was hovered.
+    if BL_TrackUnknown then
+        BL_PrintE((BL_Lang=="FR" and "Inconnu : " or "Unknown: ")..name..", id="..tostring(id))
+    end
 end
 
 BL_PreviousChatHandler=BL716_PreviousChat
