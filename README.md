@@ -4,7 +4,7 @@ Fork français de **Birding Log** pour *The Lord of the Rings Online (LOTRO)*.
 
 - Addon original : **Birding Log** par David Down (Vinny)
 - Adaptation / maintenance FR : **Dusk-92**
-- Version du fork : **1.3-FR7.25**
+- Version du fork : **1.3-FR7.26**
 - Addon original : https://www.lotrointerface.com/downloads/info1241
 
 ## Objectif du fork
@@ -109,6 +109,12 @@ Le runtime FR7.16 possède un seul propriétaire pour :
 **FR7.19** ajoute dans la fenêtre principale une ligne de maîtrise du type `Ornithologie : niveau 28 — Bird-brained`. Le meilleur rang atteint est calculé depuis les paliers `BL_Title`. Tant que la fenêtre est visible, l'affichage est rafraîchi automatiquement si la maîtrise change ; si elle était fermée au moment du gain, la nouvelle valeur apparaît dès sa prochaine ouverture.
 
 **FR7.20** agrandit légèrement la fenêtre principale de `340x275` à `360x295` et redistribue les contrôles pour laisser davantage d'espace autour de la maîtrise et des deux rangées d'équipement, sans modifier leur fonctionnement.
+
+### FR7.26 — correctif d’ouverture de Prouesses
+
+FR7.26 corrige une régression introduite lors de l’harmonisation de la fenêtre **Prouesses** en FR7.25. Cette fenêtre revient à son comportement autonome validé en FR7.23/FR7.24 : elle est centrée et ouverte sans réutiliser `pos2` ni appliquer `SetScale` au clic.
+
+Le bouton **Prouesses** possède également un filet de sécurité : si LOTRO refuse l’ouverture de la fenêtre, BirdingLog affiche la progression des zones dans le chat au lieu de ne rien faire.
 
 ### FR7.25 — audit consolidé et apprentissage sécurisé
 
