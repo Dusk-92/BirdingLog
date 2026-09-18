@@ -66,24 +66,18 @@ end
 
 local function BL716_RuntimeSaveItems()
     local items={}
-    if type(BL_Options)=="table" then
-        table.insert(items,{scope=Turbine.DataScope.Server,key="BL_Options",value=BL_Options})
+    local function add(scope,key,value)
+        -- Never overwrite a save that failed to load during this session.
+        if not S.LoadFailures[key] and type(value)=="table" then
+            table.insert(items,{scope=scope,key=key,value=value})
+        end
     end
-    if type(BL_Locs)=="table" then
-        table.insert(items,{scope=Turbine.DataScope.Server,key="BL_Locs",value=BL_Locs})
-    end
-    if type(BL_Names)=="table" then
-        table.insert(items,{scope=Turbine.DataScope.Server,key="BL_Names",value=BL_Names})
-    end
-    if type(BL_GNames)=="table" then
-        table.insert(items,{scope=Turbine.DataScope.Server,key="BL_GNames",value=BL_GNames})
-    end
-    if type(BL_Totals)=="table" then
-        table.insert(items,{scope=Turbine.DataScope.Character,key="BL_Totals",value=BL_Totals})
-    end
-    if type(S.PendingShortcuts)=="table" then
-        table.insert(items,{scope=Turbine.DataScope.Character,key="BL_PendingShortcuts",value=S.PendingShortcuts})
-    end
+    add(Turbine.DataScope.Server,"BL_Options",BL_Options)
+    add(Turbine.DataScope.Server,"BL_Locs",BL_Locs)
+    add(Turbine.DataScope.Server,"BL_Names",BL_Names)
+    add(Turbine.DataScope.Server,"BL_GNames",BL_GNames)
+    add(Turbine.DataScope.Character,"BL_Totals",BL_Totals)
+    add(Turbine.DataScope.Character,"BL_PendingShortcuts",S.PendingShortcuts)
     return items
 end
 
@@ -197,7 +191,7 @@ if BL_Lang=="FR" then
 end
 
 BL_Names=S.PreloadedNames or {}
-BL_GNames=S.SanitizeNameCache(S.RawLoad(Turbine.DataScope.Server,"BL_GNames"))
+BL_GNames=S.SanitizeNameCache(S.Load(Turbine.DataScope.Server,"BL_GNames"))
 
 if BL_Lang=="FR" then
     for id,name in pairs(BL_Names) do
@@ -312,16 +306,6 @@ local function BL716_ValidateRestored(field,control,background)
         return
     end
 
-    if field=="kit" and not BL_Totals.kitBypass then
-        local item=resolved and resolved:GetItem()
-        local info=item and item:GetItemInfo()
-        if info and info:GetCategory()~=BL_BirdingKit then
-            BL_Totals.kit=nil
-            BL_Totals.kitBypass=nil
-            BL_ClearPendingShortcut("kit")
-            BL716_ClearControl(control,background)
-        end
-    end
 end
 
 if BL_window then
@@ -404,9 +388,9 @@ if BL_window then
     if BL_window.kit then
         BL_window.kit.ShortcutChanged=function(sender,args)
             if BL716_ShortcutGuard then return end
-            local data,bypass=BL_Shortcut(sender,BL_Lang=="FR" and "Kit d’ornithologie" or "Birding Kit",nil,BL_BirdingKit)
+            local data=BL_Shortcut(sender,BL_Lang=="FR" and "Kit d’ornithologie" or "Birding Kit")
             BL_Totals.kit=data
-            BL_Totals.kitBypass=(data and bypass) and true or nil
+            BL_Totals.kitBypass=nil
             BL_ClearPendingShortcut("kit")
             BL716_SaveRuntimeData()
         end
@@ -428,21 +412,6 @@ if BL_window then
         end
     end
 end
-
--- BL_Window's Add Bird action is historical and local to its constructor. This
--- narrow bridge recognizes only that action's success message; all other saves
--- in FR7.16 are hooked directly where the data changes.
-local BL716_BasePrint=BL_Print
-local function BL716_Print(text)
-    local result=BL716_BasePrint(text)
-    if type(text)=="string" then
-        local manualAdd=text:find("^Observation ajoutée : ")~=nil or
-            (text:find("^Added ")~=nil and text:find(" sighting",1,true)~=nil)
-        if manualAdd then BL716_SaveRuntimeData() end
-    end
-    return result
-end
-BL_Print=BL716_Print
 
 -- ---------------------------------------------------------------------------
 -- FR localization -- one exact runtime owner, no frame-count proxy
@@ -556,6 +525,12 @@ end
 
 function BL_AutoLocalize(force)
     if BL_Lang~="FR" or BL716_Unloading then return end
+    if S.LoadFailures["BL_Names"] or S.LoadFailures["BL_GNames"] or S.LoadFailures["BL_Options"] then
+        if force then
+            BL_PrintE("Rafraîchissement FR ignoré : une sauvegarde de localisation n’a pas pu être lue.")
+        end
+        return
+    end
 
     if BL716_SaveBusy then
         if force and not BL716_LocalizationQueuedForce then
@@ -682,6 +657,9 @@ local function BL716_ChatHandler(sender,args)
         if n then
             local changed=BL_Totals.fp~=n
             BL_Totals.fp=n
+            if changed and BL_window and BL_window.RefreshProficiency then
+                BL_window:RefreshProficiency()
+            end
             if changed or BL716_SaveRetryPending then BL716_SaveRuntimeData() end
         end
         return
@@ -1017,6 +995,13 @@ end
 -- Startup persistence and clean unload
 -- ---------------------------------------------------------------------------
 
+-- Report read failures before any write. Failed keys stay excluded from all
+-- runtime save batches so a transient read error cannot erase valid disk data.
+for key,err in pairs(S.LoadFailures) do
+    BL_PrintE((BL_Lang=="FR" and "Sauvegarde non chargée, écriture désactivée pour cette session : " or
+        "Save failed to load; writes disabled for this session: ")..tostring(key))
+end
+
 -- Let localization go first. Runtime persistence is serialized behind it, so
 -- migration/sanitization is still saved before any later gameplay change.
 if BL_Lang=="FR" then BL_AutoLocalize(false) end
@@ -1054,13 +1039,14 @@ Plugins.BirdingLog.Unload=function(sender,args)
     end
     BL_ChatHandler=nil
     BL_PreviousChatHandler=BL716_PreviousChat
-    if BL_Print==BL716_Print then BL_Print=BL716_BasePrint end
-
-    if BL_window then BL_window:SetVisible(false) end
+    if BL_window then
+        BL_window:SetWantsUpdates(false)
+        BL_window:SetVisible(false)
+    end
     if BL_IconWindow then BL_IconWindow:SetVisible(false) end
     pcall(function() Turbine.Shell.RemoveCommand(BL_Command) end)
 
-    BL716_BasePrint(BL_Lang=="FR" and "Carnet d’ornithologie enregistré." or "Birding record saved.")
+    BL_Print(BL_Lang=="FR" and "Carnet d’ornithologie enregistré." or "Birding record saved.")
 
     BL_SaveRuntimeData=nil
     BL_SaveOptions=nil
